@@ -4,21 +4,26 @@
 import PackageDescription
 
 let package = Package(
-    name: "LocationMonitor",
+    name: "LocationProvider",
+    platforms: [
+        .iOS(.v18),
+        .macOS(.v15),
+    ],
     products: [
         // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
-            name: "LocationMonitor",
-            targets: ["LocationMonitor"]),
+            name: "LocationProvider",
+            targets: ["LocationProvider"]
+        ),
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
         // Targets can depend on other targets in this package and products from dependencies.
         .target(
-            name: "LocationMonitor"),
+            name: "LocationProvider"),
         .testTarget(
-            name: "LocationMonitorTests",
-            dependencies: ["LocationMonitor"]
+            name: "LocationProviderTests",
+            dependencies: ["LocationProvider"]
         ),
     ]
 )
