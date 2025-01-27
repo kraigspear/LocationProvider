@@ -26,7 +26,7 @@ enum GPSLocationError: LocalizedError {
     case serviceSessionRequired
     /// Attempt to get the name through reverse geocoding failed
     case reverseGeocoding
-    
+
     init?(locationUpdate update: LocationUpdate) {
         switch true {
         case update.authorizationDenied:
@@ -45,7 +45,7 @@ enum GPSLocationError: LocalizedError {
             return nil
         }
     }
-    
+
     var errorDescription: String? {
         switch self {
         case .authorizationDenied:

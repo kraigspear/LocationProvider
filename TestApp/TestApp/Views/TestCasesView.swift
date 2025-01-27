@@ -1,5 +1,5 @@
 //
-//  TestCases.swift
+//  TestCasesView.swift
 //  TestApp
 //
 //  Created by Kraig Spear on 1/26/25.
@@ -16,14 +16,14 @@ struct TestCase: Identifiable {
 
 struct TestCasesView: View {
     @State private var currentPage = 0
-    
+
     let testsCases = [
         TestCase(
             title: "Happy Path - Location Permission",
             steps: [
                 "1. Launch the app",
                 "2. Tap the 'Find Location' button",
-                "3. When prompted, tap 'Allow' for location permissions"
+                "3. When prompted, tap 'Allow' for location permissions",
             ],
             expectedOutcome: "App should successfully retrieve and display the current location"
         ),
@@ -32,7 +32,7 @@ struct TestCasesView: View {
             steps: [
                 "1. Launch the app",
                 "2. Tap the 'Find Location' button",
-                "3. When prompted, tap 'Don't Allow' for location permissions"
+                "3. When prompted, tap 'Don't Allow' for location permissions",
             ],
             expectedOutcome: "App should display an error message and provide instructions to enable permissions in Settings"
         ),
@@ -41,7 +41,7 @@ struct TestCasesView: View {
             steps: [
                 "1. Turn off location services",
                 "2. Launch App",
-                "3. Tap find location button"
+                "3. Tap find location button",
             ],
             expectedOutcome: "Error message indicating to turn on location permissions"
         ),
@@ -50,25 +50,25 @@ struct TestCasesView: View {
             steps: [
                 "1. Turn on Airplane mode",
                 "2. Launch App",
-                "3. Tap find location button"
+                "3. Tap find location button",
             ],
             expectedOutcome: "Error message indicating no network, airplane mode."
-        )
+        ),
     ]
-    
+
     var body: some View {
         VStack {
             Text("Test Cases")
                 .font(.largeTitle)
                 .padding()
-            
+
             TabView(selection: $currentPage) {
                 ForEach(testsCases.indices, id: \.self) { index in
                     TestCaseView(instruction: testsCases[index], pageNumber: index + 1)
                         .tag(index)
                 }
             }.tabViewStyle(PageTabViewStyle())
-             .indexViewStyle(PageIndexViewStyle(backgroundDisplayMode: .always))
+                .indexViewStyle(PageIndexViewStyle(backgroundDisplayMode: .always))
         }
     }
 }

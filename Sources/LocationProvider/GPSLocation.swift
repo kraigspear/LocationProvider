@@ -39,39 +39,39 @@ public struct GPSLocation: CustomStringConvertible, Sendable, Equatable {
 
 #if DEBUG
 
-public extension GPSLocation {
-    // Major tech company headquarters
-    static let appleHQ = GPSLocation(
-        name: "Apple Park",
-        location: CLLocation(latitude: 37.334922, longitude: -122.009033)
-    )
-    
-    static let googleHQ = GPSLocation(
-        name: "Googleplex",
-        location: CLLocation(latitude: 37.422160, longitude: -122.084270)
-    )
-    
-    // Famous landmarks
-    static let eiffelTower = GPSLocation(
-        name: "Eiffel Tower",
-        location: CLLocation(latitude: 48.858370, longitude: 2.294481)
-    )
-    
-    static let statueOfLiberty = GPSLocation(
-        name: "Statue of Liberty",
-        location: CLLocation(latitude: 40.689247, longitude: -74.044502)
-    )
-    
-    // Popular tourist destinations
-    static let timesSquare = GPSLocation(
-        name: "Times Square",
-        location: CLLocation(latitude: 40.758896, longitude: -73.985130)
-    )
-    
-    static let granndCanyon = GPSLocation(
-        name: "Grand Canyon Visitor Center",
-        location: CLLocation(latitude: 36.054445, longitude: -112.134166)
-    )
-}
+    public extension GPSLocation {
+        // Major tech company headquarters
+        static let appleHQ = GPSLocation(
+            name: "Apple Park",
+            location: CLLocation(latitude: 37.334922, longitude: -122.009033)
+        )
+
+        static let googleHQ = GPSLocation(
+            name: "Googleplex",
+            location: CLLocation(latitude: 37.422160, longitude: -122.084270)
+        )
+
+        // Famous landmarks
+        static let eiffelTower = GPSLocation(
+            name: "Eiffel Tower",
+            location: CLLocation(latitude: 48.858370, longitude: 2.294481)
+        )
+
+        static let statueOfLiberty = GPSLocation(
+            name: "Statue of Liberty",
+            location: CLLocation(latitude: 40.689247, longitude: -74.044502)
+        )
+
+        // Popular tourist destinations
+        static let timesSquare = GPSLocation(
+            name: "Times Square",
+            location: CLLocation(latitude: 40.758896, longitude: -73.985130)
+        )
+
+        static let granndCanyon = GPSLocation(
+            name: "Grand Canyon Visitor Center",
+            location: CLLocation(latitude: 36.054445, longitude: -112.134166)
+        )
+    }
 
 #endif

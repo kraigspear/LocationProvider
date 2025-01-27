@@ -10,12 +10,12 @@ import SwiftUI
 
 struct LocationInfoView: View {
     let location: GPSLocation
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Label("Location Details", systemImage: "location.fill")
                 .font(.headline)
-            
+
             VStack(alignment: .leading, spacing: 8) {
                 LineView(
                     title: "Name",
@@ -26,7 +26,7 @@ struct LocationInfoView: View {
                     title: "Latitude:",
                     line: String(format: "%.6f", location.location.coordinate.latitude)
                 )
-                
+
                 LineView(
                     title: "Longitude:",
                     line: String(format: "%.6f", location.location.coordinate.longitude)
@@ -37,7 +37,7 @@ struct LocationInfoView: View {
             .cornerRadius(10)
         }
     }
-    
+
     struct LineView: View {
         let title: String
         let line: String

@@ -27,7 +27,7 @@ extension LocationProvider {
         /// - Returns: A string representing the location name, or nil if geocoding fails
         /// - Throws: An error if the geocoding request fails
         var reverseGeocodeLocation: (CLLocation) async throws -> String?
-        
+
         /// Live implementation using CoreLocation services.
         ///
         /// This implementation:
@@ -58,39 +58,39 @@ extension LocationProvider {
 
 #if DEBUG
 
-extension LocationProvider.Client {
-    /// Creates a test client with predefined location updates and geocoding responses.
-    ///
-    /// - Parameters:
-    ///   - updates: Array of `LocationUpdate` instances to be yielded by the stream
-    ///   - reverseGeocodeLocation: Expected result of reverse geocoding attempts
-    /// - Returns: A configured test client
-    static func test(
-        updates: [LocationUpdate],
-        reverseGeocodeLocation: Result<String?, Error>
-    ) -> Self {
-        Self(
-            updates: {
-                AsyncStream { continuation in
-                    Task {
-                        for update in updates {
-                            continuation.yield(update)
-                            try? await Task.sleep(for: .seconds(1))
+    extension LocationProvider.Client {
+        /// Creates a test client with predefined location updates and geocoding responses.
+        ///
+        /// - Parameters:
+        ///   - updates: Array of `LocationUpdate` instances to be yielded by the stream
+        ///   - reverseGeocodeLocation: Expected result of reverse geocoding attempts
+        /// - Returns: A configured test client
+        static func test(
+            updates: [LocationUpdate],
+            reverseGeocodeLocation: Result<String?, Error>
+        ) -> Self {
+            Self(
+                updates: {
+                    AsyncStream { continuation in
+                        Task {
+                            for update in updates {
+                                continuation.yield(update)
+                                try? await Task.sleep(for: .seconds(1))
+                            }
+                            continuation.finish()
                         }
-                        continuation.finish()
+                    }
+                },
+                reverseGeocodeLocation: { _ in
+                    switch reverseGeocodeLocation {
+                    case let .success(value):
+                        return value
+                    case let .failure(error):
+                        throw error
                     }
                 }
-            },
-            reverseGeocodeLocation: { _ in
-                switch reverseGeocodeLocation {
-                case .success(let value):
-                    return value
-                case .failure(let error):
-                    throw error
-                }
-            }
-        )
+            )
+        }
     }
-}
 
 #endif

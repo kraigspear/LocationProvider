@@ -12,6 +12,7 @@ import CoreLocation
 /// A mock implementation of `LocationUpdate` protocol for testing purposes.
 struct MockLocationUpdate: LocationUpdate {
     // MARK: - Properties
+
     private let mockLocation: CLLocation?
     private let mockAccuracyLimited: Bool
     private let mockAuthRequestInProgress: Bool
@@ -22,59 +23,61 @@ struct MockLocationUpdate: LocationUpdate {
     private let mockLocationUnavailable: Bool
     private let mockServiceSessionRequired: Bool
     private let mockStationary: Bool
-    
+
     // MARK: - Protocol Requirements
+
     /// The current location value, if available.
     var location: CLLocation? {
-        return mockLocation
+        mockLocation
     }
-    
+
     /// A Boolean value indicating whether the location accuracy is limited.
     var accuracyLimited: Bool {
-        return mockAccuracyLimited
+        mockAccuracyLimited
     }
-    
+
     /// A Boolean value indicating whether an authorization request is currently in progress.
     var authorizationRequestInProgress: Bool {
-        return mockAuthRequestInProgress
+        mockAuthRequestInProgress
     }
-    
+
     /// A Boolean value indicating whether location authorization has been denied for this app.
     var authorizationDenied: Bool {
-        return mockAuthDenied
+        mockAuthDenied
     }
-    
+
     /// A Boolean value indicating whether location services are denied globally on the device.
     var authorizationDeniedGlobally: Bool {
-        return mockAuthDeniedGlobally
+        mockAuthDeniedGlobally
     }
-    
+
     /// A Boolean value indicating whether location services are restricted on this device.
     var authorizationRestricted: Bool {
-        return mockAuthRestricted
+        mockAuthRestricted
     }
-    
+
     /// A Boolean value indicating whether the app's location usage is insufficient for the requested operation.
     var insufficientlyInUse: Bool {
-        return mockInsufficientlyInUse
+        mockInsufficientlyInUse
     }
-    
+
     /// A Boolean value indicating whether location services are currently unavailable.
     var locationUnavailable: Bool {
-        return mockLocationUnavailable
+        mockLocationUnavailable
     }
-    
+
     /// A Boolean value indicating whether a service session is required for location updates.
     var serviceSessionRequired: Bool {
-        return mockServiceSessionRequired
+        mockServiceSessionRequired
     }
-    
+
     /// A Boolean value indicating whether the device is stationary.
     var stationary: Bool {
-        return mockStationary
+        mockStationary
     }
-    
+
     // MARK: - Initialization
+
     /// Creates a mock location update with specified values.
     /// - Parameters:
     ///   - location: The mock location value.
@@ -99,26 +102,27 @@ struct MockLocationUpdate: LocationUpdate {
         serviceSessionRequired: Bool = false,
         stationary: Bool = false
     ) {
-        self.mockLocation = location
-        self.mockAccuracyLimited = accuracyLimited
-        self.mockAuthRequestInProgress = authorizationRequestInProgress
-        self.mockAuthDenied = authorizationDenied
-        self.mockAuthDeniedGlobally = authorizationDeniedGlobally
-        self.mockAuthRestricted = authorizationRestricted
-        self.mockInsufficientlyInUse = insufficientlyInUse
-        self.mockLocationUnavailable = locationUnavailable
-        self.mockServiceSessionRequired = serviceSessionRequired
-        self.mockStationary = stationary
+        mockLocation = location
+        mockAccuracyLimited = accuracyLimited
+        mockAuthRequestInProgress = authorizationRequestInProgress
+        mockAuthDenied = authorizationDenied
+        mockAuthDeniedGlobally = authorizationDeniedGlobally
+        mockAuthRestricted = authorizationRestricted
+        mockInsufficientlyInUse = insufficientlyInUse
+        mockLocationUnavailable = locationUnavailable
+        mockServiceSessionRequired = serviceSessionRequired
+        mockStationary = stationary
     }
 }
 
 // MARK: - Factory Methods
+
 extension MockLocationUpdate {
     /// Creates a mock representing an authorized state with a specific location.
     static func authorized(with location: CLLocation) -> Self {
-        return Self(location: location)
+        Self(location: location)
     }
-    
+
     /// Creates a mock representing a denied authorization state.
     static func denied() -> Self {
         Self(
@@ -126,7 +130,7 @@ extension MockLocationUpdate {
             locationUnavailable: true
         )
     }
-    
+
     /// Creates a mock representing a globally denied authorization state.
     static func deniedGlobally() -> Self {
         Self(
@@ -134,7 +138,7 @@ extension MockLocationUpdate {
             locationUnavailable: true
         )
     }
-    
+
     /// Creates a mock representing a restricted authorization state.
     static func restricted() -> Self {
         Self(
@@ -142,7 +146,7 @@ extension MockLocationUpdate {
             locationUnavailable: true
         )
     }
-    
+
     /// Creates a mock representing an in-progress authorization request state.
     static func requestInProgress() -> Self {
         Self(
@@ -150,7 +154,7 @@ extension MockLocationUpdate {
             locationUnavailable: true
         )
     }
-    
+
     /// Creates a mock representing an insufficiently in-use state.
     static func insufficientlyInUse() -> Self {
         Self(
@@ -158,14 +162,14 @@ extension MockLocationUpdate {
             locationUnavailable: true
         )
     }
-    
+
     /// Creates a mock representing a state requiring service session.
     static func serviceSessionRequired() -> Self {
         Self(
             serviceSessionRequired: true
         )
     }
-    
+
     /// Creates a mock representing a state where location is not available.
     static func locationNotAvailable() -> Self {
         Self(

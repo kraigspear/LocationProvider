@@ -34,19 +34,18 @@ private let logger = Logger(subsystem: "com.spearware.location", category: "📍
 /// ```
 @MainActor
 public final class LocationProvider {
-    
     // MARK: - Properties
-    
+
     /// The client responsible for handling location services
     private let client: Client
-    
+
     // MARK: - Initialization
-    
+
     /// Creates a new instance of LocationProvider with the live client
     public init() {
-        self.client = .live
+        client = .live
     }
-    
+
     /// Creates a new instance of LocationProvider with a custom client
     /// - Parameter client: The client to use for location services
     init(client: Client) {
@@ -101,28 +100,28 @@ public final class LocationProvider {
     ///          or other relevant `GPSLocationError` cases based on the update state
     private func firstLiveUpdate() async throws -> CLLocation {
         logger.debug("Starting live update monitoring")
-        
+
         for try await update in client.updates() {
             logger.debug("Received location update")
-            
+
             if let location = update.location {
                 logger.debug("Valid location found")
                 return location
             }
-            
+
             // Handle permission request state
             if update.authorizationRequestInProgress {
                 logger.debug("Location permission request in progress")
                 continue
             }
-            
+
             // Handle error states
             if let error = GPSLocationError(locationUpdate: update) {
                 logger.error("Location error encountered: \(error)")
                 throw error
             }
         }
-        
+
         logger.error("Location updates stream ended without valid location")
         throw GPSLocationError.notFound
     }

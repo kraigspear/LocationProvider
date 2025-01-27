@@ -12,13 +12,12 @@ import SwiftUI
 private let logger = os.Logger(subsystem: "com.spearware.locationprovider.testapp", category: "contentView")
 
 struct FindLocationView: View {
-    
     @State private var model: Model
-    
+
     init(state: FindLocationView.Model.State = .init()) {
         _model = .init(initialValue: .init(state: state))
     }
-    
+
     var body: some View {
         VStack(spacing: 20) {
             switch model.state.innerView {
@@ -27,18 +26,17 @@ struct FindLocationView: View {
             case .loading:
                 ProgressView("Finding location...")
                     .progressViewStyle(.circular)
-            case .loaded(let location):
+            case let .loaded(location):
                 LocationInfoView(location: location)
-            case .error(let message):
+            case let .error(message):
                 ErrorView(message: message)
             }
         }.environment(model)
     }
-    
+
     struct FindLocationButton: View {
-        
         let model: FindLocationView.Model
-        
+
         var body: some View {
             Button(action: {
                 Task {
@@ -53,11 +51,10 @@ struct FindLocationView: View {
             }
         }
     }
-    
+
     struct ErrorView: View {
-        
         @Environment(FindLocationView.Model.self) private var model
-        
+
         let message: String
         var body: some View {
             VStack(spacing: 16) {
@@ -88,38 +85,37 @@ extension FindLocationView {
             case loaded(GPSLocation)
             case error(String)
         }
-        
+
         struct State: Equatable {
             var innerView = InnerView.idle
         }
-        
+
         private(set) var state: State
-        
+
         init(state: State = .init()) {
             self.state = state
         }
-        
+
         // MARK: - Action(s)
-        
+
         func fetchCurrentLocation() async {
             do {
                 state.innerView = .loading
-                
+
                 logger.debug("Finding location")
                 let gpsLocation = try await LocationProvider().gpsLocation()
                 logger.debug("Location found: \(gpsLocation)")
-                
+
                 state.innerView = .loaded(gpsLocation)
             } catch {
                 logger.error("Error fetching location: \(error)")
                 state.innerView = .error(error.localizedDescription)
             }
         }
-        
+
         func reset() {
             state.innerView = .idle
         }
-        
     }
 }
 
