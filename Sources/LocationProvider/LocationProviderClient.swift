@@ -6,6 +6,9 @@
 //
 
 import CoreLocation
+import os.log
+
+private let logger = Logger(subsystem: "com.spearware.locationprovider", category: "Client")
 
 extension LocationProvider {
     /// A client interface for location services that handles location updates and reverse geocoding.
@@ -36,14 +39,19 @@ extension LocationProvider {
         static let live = Self(
             updates: {
                 AsyncStream { continuation in
-                    Task {
+                    let task = Task {
                         do {
                             for try await update in CLLocationUpdate.liveUpdates() {
+                                if Task.isCancelled { break }
                                 continuation.yield(update)
                             }
                         } catch {
-                            continuation.finish()
+                            logger.error("Location stream error: \(error)")
                         }
+                        continuation.finish()
+                    }
+                    continuation.onTermination = { @Sendable _ in
+                        task.cancel()
                     }
                 }
             },
