@@ -27,7 +27,9 @@ let package = Package(
         ),
         .testTarget(
             name: "LocationProviderTests",
-            dependencies: ["LocationProvider"]
+            dependencies: ["LocationProvider"], swiftSettings: [
+                .enableUpcomingFeature("StrictConcurrency")
+            ]
         ),
     ]
 )
