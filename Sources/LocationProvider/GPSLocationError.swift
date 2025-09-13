@@ -9,7 +9,7 @@ import CoreLocation
 import Foundation
 
 /// Represents possible errors that can occur during GPS location operations.
-enum GPSLocationError: LocalizedError {
+public enum GPSLocationError: LocalizedError {
     /// Location access is restricted by parental controls or device management
     case authorizationRestricted
     /// Location services are temporarily unavailable or cannot determine position
@@ -46,7 +46,7 @@ enum GPSLocationError: LocalizedError {
         }
     }
 
-    var errorDescription: String? {
+    public var errorDescription: String? {
         switch self {
         case .authorizationDenied:
             "Location access is disabled for this app. You can enable it in Settings > Privacy > Location Services."
