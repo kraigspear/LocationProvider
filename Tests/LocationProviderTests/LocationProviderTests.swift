@@ -66,7 +66,7 @@ struct LocationProviderTest {
             updates: [
                 MockLocationUpdate.locationNotAvailable(),
                 MockLocationUpdate.locationNotAvailable(),
-                locationUpdate
+                locationUpdate,
             ],
             reverseGeocodeLocation: .success("KraigTown")
         )
@@ -91,6 +91,35 @@ struct LocationProviderTest {
 
         #expect(gPSLocation.location == expectedLocation)
         #expect(gPSLocation.name == "GPS")
+    }
+
+    @Test("Location unavailable update followed by success is tolerated")
+    func locationUnavailableRecovers() async throws {
+        let expectedLocation = CLLocation.statueOfLiberty
+        let updateStream = AsyncStream<LocationUpdate> { continuation in
+            Task {
+                continuation.yield(MockLocationUpdate.locationNotAvailable())
+                try? await Task.sleep(for: .seconds(1))
+                continuation.yield(MockLocationUpdate(location: expectedLocation))
+                continuation.finish()
+            }
+        }
+
+        let client = LocationProvider.Client(
+            updates: { updateStream },
+            reverseGeocodeLocation: { _ in "KraigTown" }
+        )
+
+        let locationProvider = LocationProvider(client: client)
+        let clock = ContinuousClock()
+        let start = clock.now
+
+        let gPSLocation = try await locationProvider.gpsLocation()
+        let elapsed = start.duration(to: clock.now)
+
+        #expect(gPSLocation.location == expectedLocation)
+        #expect(gPSLocation.name == "KraigTown")
+        #expect(elapsed >= .seconds(1))
     }
 
     @MainActor
