@@ -1,9 +1,15 @@
 
 
 import CoreLocation
+import Foundation
 import os
 
 // MARK: - Constants & Logger Setup
+
+private enum Constants {
+    static let locationAcquisitionTimeout: Duration = .seconds(10)
+    static let locationUnavailableGracePeriod: Duration = .seconds(3)
+}
 
 /// Logger instance for debugging and tracking location-related operations.
 private let logger = Logger(subsystem: "com.spearware.location", category: "📍LocationProvider")
@@ -101,34 +107,65 @@ public final class LocationProvider {
     private func firstLiveUpdate() async throws -> CLLocation {
         logger.debug("Starting live update monitoring")
 
+        let clock = ContinuousClock()
+        var acquisitionWindowStart = clock.now
+        var locationUnavailableStart: ContinuousClock.Instant?
+        var lastTransientError: GPSLocationError?
+
         for try await update in client.updates() {
-            logger.debug("Received location update")
+            let now = clock.now
+            logger.debug("Received location update: \(String(describing: update))")
 
-            if let location = update.location {
-                logger.debug("Valid location found")
-                return location
-            }
-
-            // Handle permission request state
             if update.authorizationRequestInProgress {
-                logger.debug("Location permission request in progress")
+                logger.debug("Authorization request in progress; resetting timers")
+                acquisitionWindowStart = now
+                locationUnavailableStart = nil
+                lastTransientError = nil
                 continue
             }
 
-            // Handle error states
-            if let error = GPSLocationError(locationUpdate: update) {
-                if case .locationUnavailable = error {
-                    logger.debug("Location temporarily unavailable, awaiting next update")
-                    continue
-                }
+            if let location = update.location {
+                logger.debug("Valid location found: \(String(describing: location))")
+                return location
+            }
 
-                logger.error("Location error encountered: \(error)")
-                throw error
+            if let error = GPSLocationError(locationUpdate: update) {
+                switch error {
+                case .locationUnavailable:
+                    lastTransientError = error
+
+                    if locationUnavailableStart == nil {
+                        locationUnavailableStart = now
+                        logger.debug("Location unavailable reported; starting grace period")
+                    } else if let start = locationUnavailableStart {
+                        let elapsed = start.duration(to: now)
+
+                        if elapsed >= Constants.locationUnavailableGracePeriod {
+                            logger.error("Location unavailable exceeded grace period (\(String(describing: elapsed))); throwing")
+                            throw error
+                        }
+
+                        logger.debug("Location unavailable within grace period (\(String(describing: elapsed))); awaiting recovery")
+                    }
+
+                default:
+                    logger.error("Non-transient location error encountered: \(String(describing: error))")
+                    throw error
+                }
+            } else {
+                locationUnavailableStart = nil
+            }
+
+            let acquisitionElapsed = acquisitionWindowStart.duration(to: now)
+            if acquisitionElapsed >= Constants.locationAcquisitionTimeout {
+                let timeoutError = lastTransientError ?? .notFound
+                logger.error("Location acquisition timed out after \(String(describing: acquisitionElapsed)); throwing \(String(describing: timeoutError))")
+                throw timeoutError
             }
         }
 
         logger.error("Location updates stream ended without valid location")
-        throw GPSLocationError.notFound
+        throw lastTransientError ?? .notFound
     }
 }
 
