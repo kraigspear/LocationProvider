@@ -57,6 +57,27 @@ struct LocationProviderTest {
         #expect(gPSLocation.name == "KraigTown")
     }
 
+    @Test("Location unavailable updates retry until success")
+    func locationUnavailableRetries() async throws {
+        let expectedLocation = CLLocation.statueOfLiberty
+        let locationUpdate = MockLocationUpdate(location: expectedLocation)
+
+        let client = LocationProvider.Client.test(
+            updates: [
+                MockLocationUpdate.locationNotAvailable(),
+                MockLocationUpdate.locationNotAvailable(),
+                locationUpdate
+            ],
+            reverseGeocodeLocation: .success("KraigTown")
+        )
+
+        let locationProvider = LocationProvider(client: client)
+        let gPSLocation = try await locationProvider.gpsLocation()
+
+        #expect(gPSLocation.location == expectedLocation, "Retries should surface the first valid CLLocation once availability recovers")
+        #expect(gPSLocation.name == "KraigTown", "Reverse geocoding should still return the resolved placemark after retries")
+    }
+
     @Test("Reverse geocoding fails, name is given default GPS")
     func reverseGeocodingError() async throws {
         let expectedLocation = CLLocation.statueOfLiberty
@@ -140,20 +161,6 @@ struct LocationProviderTest {
             let locationProvider = LocationProvider(client: client)
 
             await #expect(throws: GPSLocationError.serviceSessionRequired) {
-                _ = try await locationProvider.gpsLocation()
-            }
-        }
-
-        @Test("Location not available, Error thrown")
-        func locationUnavailable() async throws {
-            let locationUpdate = MockLocationUpdate.locationNotAvailable()
-            let client = LocationProvider.Client.test(
-                updates: [locationUpdate],
-                reverseGeocodeLocation: .success("KraigTown")
-            )
-            let locationProvider = LocationProvider(client: client)
-
-            await #expect(throws: GPSLocationError.locationUnavailable) {
                 _ = try await locationProvider.gpsLocation()
             }
         }
