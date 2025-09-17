@@ -117,6 +117,11 @@ public final class LocationProvider {
 
             // Handle error states
             if let error = GPSLocationError(locationUpdate: update) {
+                if case .locationUnavailable = error {
+                    logger.debug("Location temporarily unavailable, awaiting next update")
+                    continue
+                }
+
                 logger.error("Location error encountered: \(error)")
                 throw error
             }

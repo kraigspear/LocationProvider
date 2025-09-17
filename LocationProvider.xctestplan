@@ -1,0 +1,24 @@
+{
+  "configurations" : [
+    {
+      "id" : "54B3506F-2A57-4D6F-ABD2-F83EBE515CF9",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "performanceAntipatternCheckerEnabled" : true
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:",
+        "identifier" : "LocationProviderTests",
+        "name" : "LocationProviderTests"
+      }
+    }
+  ],
+  "version" : 1
+}
