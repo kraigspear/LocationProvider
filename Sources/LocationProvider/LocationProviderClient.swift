@@ -38,7 +38,8 @@ extension LocationProvider {
         /// - Employs `CLGeocoder` for reverse geocoding
         static let live = Self(
             updates: {
-                AsyncStream { continuation in
+                logger.debug("updates called")
+                return AsyncStream { continuation in
                     let task = Task {
                         do {
                             for try await update in CLLocationUpdate.liveUpdates() {
@@ -53,8 +54,15 @@ extension LocationProvider {
                         }
                         continuation.finish()
                     }
-                    continuation.onTermination = { @Sendable _ in
-                        logger.warning("Task was terminated, cancelling location stream")
+                    continuation.onTermination = { @Sendable termination in
+                        switch termination {
+                        case .finished:
+                            logger.debug("Task was terminated due to being finished, cancelling location stream")
+                        case .cancelled:
+                            logger.warning("Task was terminated due to being cancelled, cancelling location stream")
+                        @unknown default:
+                            logger.warning("Task was cancelled with an unknown termination reason")
+                        }
                         task.cancel()
                     }
                 }
