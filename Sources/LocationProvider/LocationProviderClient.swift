@@ -42,7 +42,10 @@ extension LocationProvider {
                     let task = Task {
                         do {
                             for try await update in CLLocationUpdate.liveUpdates() {
-                                if Task.isCancelled { break }
+                                if Task.isCancelled {
+                                    logger.debug("Task was cancelled, aborting location stream")
+                                    break
+                                }
                                 continuation.yield(update)
                             }
                         } catch {
@@ -51,6 +54,7 @@ extension LocationProvider {
                         continuation.finish()
                     }
                     continuation.onTermination = { @Sendable _ in
+                        logger.warning("Task was terminated, cancelling location stream")
                         task.cancel()
                     }
                 }
