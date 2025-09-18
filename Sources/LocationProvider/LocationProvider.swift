@@ -7,8 +7,8 @@ import os
 // MARK: - Constants & Logger Setup
 
 private enum Constants {
-    static let locationAcquisitionTimeout: Duration = .seconds(10)
-    static let locationUnavailableGracePeriod: Duration = .seconds(3)
+    static let locationAcquisitionTimeout: Duration = .seconds(30)
+    static let locationUnavailableGracePeriod: Duration = .seconds(25)
 }
 
 /// Logger instance for debugging and tracking location-related operations.
