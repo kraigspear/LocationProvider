@@ -59,7 +59,7 @@ extension LocationProvider {
                         case .finished:
                             logger.debug("Task was terminated due to being finished, cancelling location stream")
                         case .cancelled:
-                            logger.warning("Task was terminated due to being cancelled, cancelling location stream")
+                            logger.debug("Task was terminated due to being cancelled, cancelling location stream")
                         @unknown default:
                             logger.warning("Task was cancelled with an unknown termination reason")
                         }
