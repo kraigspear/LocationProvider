@@ -8,7 +8,7 @@ import Testing
 struct LocationProviderTest {
     @Test("Initially ask for permissions, then receive a location")
     func askedForPermissionReceived() async throws {
-        let expectedLocation = CLLocation.statueOfLiberty
+        let expectedLocation = GPSLocation.statueOfLiberty.location
         let askForPermissions = MockLocationUpdate.requestInProgress()
         let locationUpdate = MockLocationUpdate(location: expectedLocation)
         let client = LocationProvider.Client.test(
@@ -24,7 +24,7 @@ struct LocationProviderTest {
 
     @Test("Success finding location")
     func locationReceived() async throws {
-        let expectedLocation = CLLocation.statueOfLiberty
+        let expectedLocation = GPSLocation.statueOfLiberty.location
         let locationUpdate = MockLocationUpdate(location: expectedLocation)
         let client = LocationProvider.Client.test(
             updates: [locationUpdate],
@@ -39,7 +39,7 @@ struct LocationProviderTest {
 
     @Test("When 2 locations are provided, use the first")
     func usesFirstProvidedLocation() async throws {
-        let firstLocation = CLLocation.statueOfLiberty
+        let firstLocation = GPSLocation.statueOfLiberty.location
         let secondLocation = CLLocation(latitude: 0, longitude: 0)
 
         let firstUpdate = MockLocationUpdate(location: firstLocation)
@@ -59,7 +59,7 @@ struct LocationProviderTest {
 
     @Test("Location unavailable updates retry until success")
     func locationUnavailableRetries() async throws {
-        let expectedLocation = CLLocation.statueOfLiberty
+        let expectedLocation = GPSLocation.statueOfLiberty.location
         let locationUpdate = MockLocationUpdate(location: expectedLocation)
 
         let client = LocationProvider.Client.test(
@@ -80,7 +80,7 @@ struct LocationProviderTest {
 
     @Test("Reverse geocoding fails, name is given default GPS")
     func reverseGeocodingError() async throws {
-        let expectedLocation = CLLocation.statueOfLiberty
+        let expectedLocation = GPSLocation.statueOfLiberty.location
         let locationUpdate = MockLocationUpdate(location: expectedLocation)
         let client = LocationProvider.Client.test(
             updates: [locationUpdate],
@@ -95,8 +95,8 @@ struct LocationProviderTest {
 
     @Test("Location unavailable update followed by success is tolerated")
     func locationUnavailableRecovers() async throws {
-        let expectedLocation = CLLocation.statueOfLiberty
-        let updateStream = AsyncStream<LocationUpdate> { continuation in
+        let expectedLocation = GPSLocation.statueOfLiberty.location
+        let updateStream = AsyncThrowingStream<LocationUpdate, Error> { continuation in
             Task {
                 continuation.yield(MockLocationUpdate.locationNotAvailable())
                 try? await Task.sleep(for: .seconds(1))
@@ -120,6 +120,24 @@ struct LocationProviderTest {
         #expect(gPSLocation.location == expectedLocation)
         #expect(gPSLocation.name == "KraigTown")
         #expect(elapsed >= .seconds(1))
+    }
+
+    @Test("Stream failure surfaces authorization denied")
+    func streamFailureSurfacesAuthorizationDenied() async throws {
+        let updateStream = AsyncThrowingStream<LocationUpdate, Error> { continuation in
+            continuation.finish(throwing: CLError(.denied))
+        }
+
+        let client = LocationProvider.Client(
+            updates: { updateStream },
+            reverseGeocodeLocation: { _ in nil }
+        )
+
+        let locationProvider = LocationProvider(client: client)
+
+        await #expect(throws: GPSLocationError.authorizationDenied) {
+            _ = try await locationProvider.gpsLocation()
+        }
     }
 
     @MainActor
@@ -194,13 +212,4 @@ struct LocationProviderTest {
             }
         }
     }
-}
-
-extension CLLocation {
-    // MARK: - US Landmarks
-
-    static let statueOfLiberty = CLLocation(
-        latitude: 40.689247,
-        longitude: -74.044502
-    )
 }

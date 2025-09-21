@@ -51,10 +51,12 @@ let locationProvider = LocationProvider()
 // Request the current location
 do {
     let location = try await locationProvider.gpsLocation()
-    print("Current location: \(location.name)")
+    print("Current location: \(location.name ?? "GPS")")
     print("Coordinates: \(location.location.coordinate.latitude), \(location.location.coordinate.longitude)")
 } catch {
+    // LocationProvider provides specific, actionable error messages
     print("Failed to get location: \(error.localizedDescription)")
+    // Example output: "Location access is disabled for this app. You can enable it in Settings > Privacy > Location Services."
 }
 ```
 
@@ -62,14 +64,16 @@ do {
 
 When you call `gpsLocation()`, LocationProvider returns a ``GPSLocation`` object that contains:
 
-- **`name`**: A human-readable location name (e.g., "San Francisco")
+- **`name`**: A human-readable location name (e.g., "San Francisco") or `nil` if reverse geocoding fails
 - **`location`**: The raw `CLLocation` object with coordinates, accuracy, and timestamp
+
+> **Important**: LocationProvider now provides specific, actionable error messages when location requests fail. Instead of generic "location not found" errors, you'll get clear guidance like "Location access is disabled for this app. You can enable it in Settings > Privacy > Location Services."
 
 ```swift
 let gpsLocation = try await locationProvider.gpsLocation()
 
-// Access the readable name
-print("You are in: \(gpsLocation.name)")
+// Access the readable name (nil if reverse geocoding failed)
+print("You are in: \(gpsLocation.name ?? "Unknown location")")
 
 // Access coordinate details
 let coordinate = gpsLocation.location.coordinate
@@ -86,11 +90,21 @@ print("Timestamp: \(gpsLocation.location.timestamp)")
 When you call `gpsLocation()`, LocationProvider:
 
 1. **Requests Permissions**: Automatically handles location authorization if needed
-2. **Gets Location**: Waits for the first accurate GPS reading
-3. **Reverse Geocodes**: Converts coordinates to a readable place name
-4. **Returns Result**: Provides both coordinates and human-readable name
+2. **Gets Location**: Waits for the first accurate GPS reading using `AsyncThrowingStream`
+3. **Error Handling**: Maps Core Location errors to specific, user-friendly messages
+4. **Reverse Geocodes**: Converts coordinates to a readable place name
+5. **Returns Result**: Provides both coordinates and human-readable name
 
 The entire process is designed to be quick and battery-efficient, stopping location services once a result is obtained.
+
+### Improved Error Handling
+
+LocationProvider now uses `AsyncThrowingStream` to properly surface Core Location errors with specific, actionable messages:
+
+- **Authorization errors** are detected immediately and provide Settings instructions
+- **Technical failures** distinguish between temporary GPS issues and permission problems
+- **System-wide vs app-specific** permission issues are clearly differentiated
+- **Cancellation errors** are filtered out as they represent normal app behavior
 
 ## Handling the Async Nature
 
@@ -115,9 +129,13 @@ class LocationViewModel {
 
         do {
             currentLocation = try await locationProvider.gpsLocation()
+        } catch let error as GPSLocationError {
+            // LocationProvider provides specific, actionable error messages
+            print("Location error: \(error.localizedDescription)")
+            // Example: "Location access is disabled for this app. You can enable it in Settings > Privacy > Location Services."
         } catch {
-            // Handle error (see Error Handling guide)
-            print("Location error: \(error)")
+            // Handle unexpected errors
+            print("Unexpected error: \(error)")
         }
     }
 }
@@ -141,8 +159,13 @@ struct ContentView: View {
         .task {
             do {
                 location = try await locationProvider.gpsLocation()
+            } catch let error as GPSLocationError {
+                // LocationProvider provides user-friendly error messages
+                print("Location error: \(error.localizedDescription)")
+                // Handle error appropriately (see Error Handling guide)
             } catch {
-                // Handle error appropriately
+                // Handle unexpected errors
+                print("Unexpected error: \(error)")
             }
         }
     }

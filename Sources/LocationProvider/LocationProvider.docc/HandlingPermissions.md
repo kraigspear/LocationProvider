@@ -4,7 +4,16 @@ Understand and manage location authorization states in your app.
 
 ## Overview
 
-LocationProvider automatically handles location permission requests, but your app needs to respond appropriately to different authorization states. This guide explains how location permissions work and how to provide a great user experience regardless of the permission status.
+LocationProvider automatically handles location permission requests and provides specific, actionable error messages when authorization fails. This guide explains how location permissions work and how to provide a great user experience using the improved error handling that tells users exactly how to fix permission issues.
+
+## Key Improvements in Error Handling
+
+LocationProvider now provides specific, actionable error messages instead of generic "location not found" errors:
+
+- **Before**: All authorization failures resulted in vague "Unable to determine location" messages
+- **After**: Clear messages like "Location access is disabled for this app. You can enable it in Settings > Privacy > Location Services"
+
+This critical improvement means users understand exactly what's wrong and how to fix it, dramatically improving the user experience when permission issues occur.
 
 ## Permission Flow
 
@@ -23,7 +32,9 @@ do {
     let location = try await locationProvider.gpsLocation()
     print("Location received: \(location.name)")
 } catch let error as GPSLocationError {
-    // Handle specific permission errors
+    // Now get specific, actionable error messages
+    print("Location error: \(error.localizedDescription)")
+    // Example: "Location access is disabled for this app. You can enable it in Settings > Privacy > Location Services."
     handleLocationError(error)
 }
 ```
@@ -67,9 +78,11 @@ When users deny location access for your specific app:
 
 ```swift
 func handleAuthorizationDenied() {
+    // LocationProvider now provides the exact message to show users
     let alert = UIAlertController(
         title: "Location Access Needed",
-        message: "This app needs location access to show your current position. You can enable this in Settings > Privacy & Security > Location Services.",
+        message: GPSLocationError.authorizationDenied.localizedDescription,
+        // This will be: "Location access is disabled for this app. You can enable it in Settings > Privacy > Location Services."
         preferredStyle: .alert
     )
 
@@ -90,9 +103,11 @@ When Location Services are turned off entirely:
 
 ```swift
 func handleGloballyDenied() {
+    // LocationProvider automatically detects system-wide vs app-specific issues
     let alert = UIAlertController(
         title: "Location Services Disabled",
-        message: "Location Services are turned off for all apps. Enable them in Settings > Privacy & Security > Location Services.",
+        message: GPSLocationError.authorizationDeniedGlobally.localizedDescription,
+        // This will be: "Location Services are turned off. Please enable them in Settings > Privacy > Location Services."
         preferredStyle: .alert
     )
 
@@ -155,7 +170,11 @@ struct LocationPermissionView: View {
                 Button("OK") {}
             }
         } message: {
-            Text(permissionError?.errorDescription ?? "")
+            // LocationProvider provides clear, actionable error messages
+            Text(permissionError?.localizedDescription ?? "")
+            // Examples:
+            // "Location access is disabled for this app. You can enable it in Settings > Privacy > Location Services."
+            // "Location Services are turned off. Please enable them in Settings > Privacy > Location Services."
         }
     }
 
@@ -176,6 +195,57 @@ struct LocationPermissionView: View {
             UIApplication.shared.open(settingsUrl)
         }
     }
+}
+```
+
+## Migration from Previous Versions
+
+If you're updating from an earlier version of LocationProvider, you'll benefit from these improvements automatically:
+
+### Before (Generic Errors)
+```swift
+// Old behavior: All permission errors were generic
+catch {
+    print("Unable to determine location")  // Not helpful to users
+}
+```
+
+### After (Specific Errors)
+```swift
+// New behavior: Specific, actionable error messages
+catch let error as GPSLocationError {
+    print(error.localizedDescription)
+    // "Location access is disabled for this app. You can enable it in Settings > Privacy > Location Services."
+}
+```
+
+### Simplified Error Handling
+
+You can now use the error messages directly without crafting your own:
+
+```swift
+func showLocationError(_ error: GPSLocationError) {
+    // Just use the provided error message - it's now user-friendly and actionable
+    let alert = UIAlertController(
+        title: "Location Error",
+        message: error.localizedDescription,
+        preferredStyle: .alert
+    )
+
+    // Add appropriate actions based on error type
+    switch error {
+    case .authorizationDenied, .authorizationDeniedGlobally:
+        alert.addAction(UIAlertAction(title: "Settings", style: .default) { _ in
+            openAppSettings()
+        })
+    default:
+        alert.addAction(UIAlertAction(title: "Try Again", style: .default) { _ in
+            Task { await requestLocation() }
+        })
+    }
+
+    alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+    present(alert, animated: true)
 }
 ```
 

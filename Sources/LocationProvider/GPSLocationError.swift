@@ -67,3 +67,51 @@ public enum GPSLocationError: LocalizedError {
         }
     }
 }
+
+extension GPSLocationError {
+    /// Maps errors from the Core Location stream to domain-specific GPS errors.
+    ///
+    /// This initializer is critical for proper error propagation from CLLocationUpdate.liveUpdates().
+    /// Without this mapping, users would receive generic "location not found" errors instead of
+    /// actionable messages like "Location access denied" that tell them how to fix the problem.
+    ///
+    /// - Parameter error: The error thrown by CLLocationUpdate.liveUpdates() or the stream itself
+    /// - Returns: A mapped GPSLocationError, or nil for errors that should not surface to users
+    init?(locationStreamError error: Error) {
+        // If already a GPSLocationError, preserve it as-is
+        if let gpsError = error as? GPSLocationError {
+            self = gpsError
+            return
+        }
+
+        // CancellationError is expected when tasks are cancelled (e.g., view dismissal).
+        // We return nil to avoid surfacing this as an error to users since it's normal behavior.
+        if error is CancellationError {
+            return nil
+        }
+
+        // Only handle CLError types - other errors aren't location-specific
+        guard let clError = error as? CLError else {
+            return nil
+        }
+
+        switch clError.code {
+        case .denied:
+            // Critical distinction: Check if location services are disabled system-wide
+            // vs just for this app. This provides users with the correct Settings path.
+            if !CLLocationManager.locationServicesEnabled() {
+                self = .authorizationDeniedGlobally
+            } else {
+                self = .authorizationDenied
+            }
+        case .locationUnknown, .network, .deferredAccuracyTooLow, .deferredDistanceFiltered, .deferredCanceled, .deferredFailed, .headingFailure:
+            // These are all transient errors where location hardware/service is temporarily
+            // unable to determine position. We map them all to locationUnavailable since
+            // the user action is the same: wait and retry.
+            self = .locationUnavailable
+        default:
+            // Other CLError types (like .rangingDisabled) aren't relevant for GPS location
+            return nil
+        }
+    }
+}

@@ -25,7 +25,7 @@ classDiagram
     }
     
     class Client {
-        +updates() -> AsyncStream<LocationUpdate>
+        +updates() -> AsyncThrowingStream<LocationUpdate, Error>
         +reverseGeocodeLocation(CLLocation) async throws -> String?
         +static live: Client
         +static test(updates: [LocationUpdate], reverseGeocodeLocation: Result<String?, Error>) -> Client
