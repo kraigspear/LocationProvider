@@ -27,6 +27,14 @@ public enum GPSLocationError: LocalizedError {
     /// Attempt to get the name through reverse geocoding failed
     case reverseGeocoding
 
+    /// User granted approximate location permission but the app requires precise location.
+    ///
+    /// In iOS 14+, users can choose to share only approximate location (~1-20km accuracy) with apps
+    /// for privacy. This error occurs when the app requests precise location but the user has only
+    /// granted approximate location access. Users can enable precise location in Settings > Privacy
+    /// & Security > Location Services > [App Name] > Precise Location.
+    case preciseLocationRequired
+
     init?(locationUpdate update: LocationUpdate) {
         switch true {
         case update.authorizationDenied:
@@ -64,6 +72,8 @@ public enum GPSLocationError: LocalizedError {
             "This feature requires an active service session. Please ensure necessary services like Find My are enabled."
         case .reverseGeocoding:
             "Failed to convert location coordinates to an address. This may be due to network issues or the location being unmapped."
+        case .preciseLocationRequired:
+            "Precise location is required but only approximate location is available. Enable Precise Location in Settings > Privacy & Security > Location Services > \(Bundle.main.displayName) to share your exact location."
         }
     }
 }
