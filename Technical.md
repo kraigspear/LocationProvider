@@ -14,7 +14,7 @@ classDiagram
         -Client client
         +init()
         +init(client: Client)
-        +gpsLocation() async throws -> GPSLocation
+        +gpsLocation(accuracyRequirement: AccuracyRequirement = .any) async throws -> GPSLocation
         -firstLiveUpdate() async throws -> CLLocation
     }
     
@@ -30,7 +30,19 @@ classDiagram
         +static live: Client
         +static test(updates: [LocationUpdate], reverseGeocodeLocation: Result<String?, Error>) -> Client
     }
-    
+
+    class AccuracyRequirement {
+        <<enumeration>>
+        +any
+        +precise
+    }
+
+    class Configuration {
+        +Duration locationAcquisitionTimeout
+        +Duration locationUnavailableGracePeriod
+        +static default: Configuration
+    }
+
     class GPSLocationError {
         +authorizationRestricted
         +notFound
@@ -47,6 +59,8 @@ classDiagram
     LocationProvider --> GPSLocation : creates
     LocationProvider --> GPSLocationError : throws
     Client ..> LocationUpdate : streams
+    LocationProvider ..> AccuracyRequirement : configures
+    LocationProvider --> Configuration : owns
 ```
 
 ### Component Responsibilities
@@ -56,6 +70,7 @@ classDiagram
    - Manages location updates and geocoding
    - Handles error states and permission flows
    - Ensures thread safety via @MainActor
+   - Exposes `Configuration` to tune acquisition timeout and grace period
 
 2. **GPSLocation**
    - Value type representing a geographical location
@@ -74,6 +89,10 @@ classDiagram
    - Enables test doubles and mocking
    - Provides live implementation using CoreLocation
    - Handles reverse geocoding
+
+5. **Configuration**
+   - Encapsulates timeout/grace-period tuning knobs
+   - Provides sensible defaults for foreground usage
 
 ## Sequence Flow
 

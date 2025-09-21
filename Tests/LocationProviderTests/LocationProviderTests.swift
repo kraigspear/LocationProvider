@@ -141,6 +141,82 @@ struct LocationProviderTest {
     }
 
     @MainActor
+    struct Accuracy {
+        @Test("Reduced accuracy is returned when accepted")
+        func reducedAccuracyReturnedWhenAccepted() async throws {
+            let expectedLocation = CLLocation(latitude: 1, longitude: 1)
+            let limitedUpdate = MockLocationUpdate(
+                location: expectedLocation,
+                accuracyLimited: true
+            )
+
+            let client = LocationProvider.Client.test(
+                updates: [limitedUpdate],
+                reverseGeocodeLocation: .success(nil)
+            )
+
+            let locationProvider = LocationProvider(client: client)
+            let gpsLocation = try await locationProvider.gpsLocation(accuracyRequirement: .any)
+
+            #expect(gpsLocation.location == expectedLocation)
+        }
+
+        @Test("Reduced accuracy rejected when precise required")
+        func reducedAccuracyRejectedWhenPreciseRequired() async throws {
+            let limitedUpdate = MockLocationUpdate(
+                location: CLLocation(latitude: 1, longitude: 1),
+                accuracyLimited: true
+            )
+
+            let updateStream = AsyncThrowingStream<LocationUpdate, Error> { continuation in
+                continuation.yield(limitedUpdate)
+                continuation.finish()
+            }
+
+            let client = LocationProvider.Client(
+                updates: { updateStream },
+                reverseGeocodeLocation: { _ in nil }
+            )
+
+            let locationProvider = LocationProvider(client: client)
+
+            await #expect(throws: GPSLocationError.preciseLocationRequired) {
+                _ = try await locationProvider.gpsLocation(accuracyRequirement: .precise)
+            }
+        }
+    }
+
+    @MainActor
+    struct Settings {
+        @Test("Custom acquisition timeout fails fast")
+        func customTimeoutFailsFast() async throws {
+            let updateStream = AsyncThrowingStream<LocationUpdate, Error> { continuation in
+                Task {
+                    continuation.yield(MockLocationUpdate.locationNotAvailable())
+                    // keep stream alive without yielding additional updates
+                    try? await Task.sleep(for: .seconds(3600))
+                }
+            }
+
+            let client = LocationProvider.Client(
+                updates: { updateStream },
+                reverseGeocodeLocation: { _ in nil }
+            )
+
+            let configuration = LocationProvider.Configuration(
+                locationAcquisitionTimeout: .seconds(0),
+                locationUnavailableGracePeriod: .seconds(0)
+            )
+
+            let provider = LocationProvider(client: client, configuration: configuration)
+
+            await #expect(throws: GPSLocationError.locationUnavailable) {
+                _ = try await provider.gpsLocation()
+            }
+        }
+    }
+
+    @MainActor
     struct Permissions {
         @Test("Permissions denied, Error thrown")
         func permissionsDenied() async throws {
