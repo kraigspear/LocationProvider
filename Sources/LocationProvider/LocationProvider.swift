@@ -112,56 +112,74 @@ public final class LocationProvider {
         var locationUnavailableStart: ContinuousClock.Instant?
         var lastTransientError: GPSLocationError?
 
-        for try await update in client.updates() {
-            let now = clock.now
-            logger.debug("Received location update: \(String(describing: update))")
+        do {
+            for try await update in client.updates() {
+                let now = clock.now
+                logger.debug("Received location update: \(String(describing: update))")
 
-            if update.authorizationRequestInProgress {
-                logger.debug("Authorization request in progress; resetting timers")
-                acquisitionWindowStart = now
-                locationUnavailableStart = nil
-                lastTransientError = nil
-                continue
-            }
+                if update.authorizationRequestInProgress {
+                    logger.debug("Authorization request in progress; resetting timers")
+                    acquisitionWindowStart = now
+                    locationUnavailableStart = nil
+                    lastTransientError = nil
+                    continue
+                }
 
-            if let location = update.location {
-                logger.debug("Valid location found: \(String(describing: location))")
-                return location
-            }
+                if let location = update.location {
+                    logger.debug("Valid location found: \(String(describing: location))")
+                    return location
+                }
 
-            if let error = GPSLocationError(locationUpdate: update) {
-                switch error {
-                case .locationUnavailable:
-                    lastTransientError = error
+                if let error = GPSLocationError(locationUpdate: update) {
+                    switch error {
+                    case .locationUnavailable:
+                        lastTransientError = error
 
-                    if locationUnavailableStart == nil {
-                        locationUnavailableStart = now
-                        logger.debug("Location unavailable reported; starting grace period")
-                    } else if let start = locationUnavailableStart {
-                        let elapsed = start.duration(to: now)
+                        if locationUnavailableStart == nil {
+                            locationUnavailableStart = now
+                            logger.debug("Location unavailable reported; starting grace period")
+                        } else if let start = locationUnavailableStart {
+                            let elapsed = start.duration(to: now)
 
-                        if elapsed >= Constants.locationUnavailableGracePeriod {
-                            logger.error("Location unavailable exceeded grace period (\(String(describing: elapsed))); throwing")
-                            throw error
+                            if elapsed >= Constants.locationUnavailableGracePeriod {
+                                logger.error("Location unavailable exceeded grace period (\(String(describing: elapsed))); throwing")
+                                throw error
+                            }
+
+                            logger.debug("Location unavailable within grace period (\(String(describing: elapsed))); awaiting recovery")
                         }
 
-                        logger.debug("Location unavailable within grace period (\(String(describing: elapsed))); awaiting recovery")
+                    default:
+                        logger.error("Non-transient location error encountered: \(String(describing: error))")
+                        throw error
                     }
-
-                default:
-                    logger.error("Non-transient location error encountered: \(String(describing: error))")
-                    throw error
+                } else {
+                    locationUnavailableStart = nil
                 }
-            } else {
-                locationUnavailableStart = nil
+
+                let acquisitionElapsed = acquisitionWindowStart.duration(to: now)
+                if acquisitionElapsed >= Constants.locationAcquisitionTimeout {
+                    let timeoutError = lastTransientError ?? .notFound
+                    logger.error("Location acquisition timed out after \(String(describing: acquisitionElapsed)); throwing \(String(describing: timeoutError))")
+                    throw timeoutError
+                }
+            }
+        } catch {
+            // Critical error handling: The stream threw an error (likely CLError from liveUpdates).
+            // We MUST map these to specific GPSLocationError cases so users get actionable messages.
+            // Example: CLError.denied → GPSLocationError.authorizationDenied → "Location access is disabled..."
+            // Without this mapping, users would only see generic "Unable to determine location" errors
+            // and wouldn't know they need to fix permissions in Settings.
+            logger.error("Location updates stream failed with error: \(String(describing: error))")
+
+            // Map CLError and other known errors to our domain-specific errors
+            if let mappedError = GPSLocationError(locationStreamError: error) {
+                throw mappedError
             }
 
-            let acquisitionElapsed = acquisitionWindowStart.duration(to: now)
-            if acquisitionElapsed >= Constants.locationAcquisitionTimeout {
-                let timeoutError = lastTransientError ?? .notFound
-                logger.error("Location acquisition timed out after \(String(describing: acquisitionElapsed)); throwing \(String(describing: timeoutError))")
-                throw timeoutError
-            }
+            // Fall back to the last transient error we saw (if any) or generic .notFound
+            // This preserves context when the stream ends unexpectedly
+            throw lastTransientError ?? .notFound
         }
 
         logger.error("Location updates stream ended without valid location")

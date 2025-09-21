@@ -22,13 +22,13 @@ let package = Package(
         .target(
             name: "LocationProvider",
             swiftSettings: [
-                .enableUpcomingFeature("StrictConcurrency")
+                .enableUpcomingFeature("StrictConcurrency"),
             ]
         ),
         .testTarget(
             name: "LocationProviderTests",
             dependencies: ["LocationProvider"], swiftSettings: [
-                .enableUpcomingFeature("StrictConcurrency")
+                .enableUpcomingFeature("StrictConcurrency"),
             ]
         ),
     ]

@@ -4,7 +4,27 @@ Respond gracefully to location errors and provide excellent user experiences.
 
 ## Overview
 
-LocationProvider provides comprehensive error handling through the ``GPSLocationError`` enum. Each error type represents a specific scenario with clear, user-friendly descriptions. This guide shows you how to handle these errors effectively and provide appropriate fallbacks.
+LocationProvider provides comprehensive error handling through the ``GPSLocationError`` enum with significant improvements in error propagation and user messaging. The framework now uses `AsyncThrowingStream` to properly surface Core Location errors with specific, actionable messages instead of generic failures. This guide shows you how to handle these errors effectively and provide appropriate fallbacks.
+
+## Critical Error Handling Improvements
+
+LocationProvider has undergone significant improvements to error handling:
+
+### Before: Hidden Authorization Errors
+- Authorization failures were swallowed and appeared as generic "Unable to determine location" errors
+- Users had no way to understand they needed to fix permissions
+- CLError.denied was not properly surfaced to applications
+
+### After: Specific, Actionable Error Messages
+- `Client.updates()` now returns `AsyncThrowingStream<LocationUpdate, Error>` instead of `AsyncStream`
+- CLError types are mapped to specific GPSLocationError cases with clear user guidance
+- Authorization errors surface immediately with instructions on how to fix them
+- CancellationError is filtered out (not surfaced to users as it's expected behavior)
+
+### Error Mapping Examples
+- `CLError.denied` → `GPSLocationError.authorizationDenied` → "Location access is disabled for this app. You can enable it in Settings > Privacy > Location Services."
+- `CLError.locationUnknown` → `GPSLocationError.locationUnavailable` → "Location services are temporarily unavailable. This might be due to no GPS signal or airplane mode being enabled."
+- `CancellationError` → Filtered out (not surfaced to users)
 
 ## Error Types
 
@@ -23,9 +43,11 @@ public enum GPSLocationError: LocalizedError {
 }
 ```
 
+> **Important**: Each error now provides specific, user-friendly messages through `localizedDescription`. These messages tell users exactly what's wrong and how to fix it, eliminating the need for generic error handling.
+
 ## Basic Error Handling Pattern
 
-Use Swift's error handling to catch and respond to specific error types:
+LocationProvider now surfaces errors immediately with specific, actionable messages:
 
 ```swift
 import LocationProvider
@@ -35,8 +57,12 @@ func getCurrentLocation() async {
         let location = try await LocationProvider().gpsLocation()
         handleLocationSuccess(location)
     } catch let error as GPSLocationError {
+        // Error messages are now specific and actionable
+        print("Location error: \(error.localizedDescription)")
+        // Example output: "Location access is disabled for this app. You can enable it in Settings > Privacy > Location Services."
         handleLocationError(error)
     } catch {
+        // Unexpected errors (should be rare with improved error mapping)
         handleUnexpectedError(error)
     }
 }
@@ -61,14 +87,17 @@ func handleLocationError(_ error: GPSLocationError) {
 
 ### Authorization Denied
 
-User has specifically denied location access for your app:
+User has specifically denied location access for your app. LocationProvider now detects this immediately and provides clear guidance:
+
+> **Key Improvement**: Previously, authorization failures appeared as generic "location not found" errors. Now they surface immediately with specific instructions.
 
 ```swift
 func handleAuthorizationDenied() {
-    // Show actionable guidance
+    // LocationProvider provides the exact message to display
     let alert = UIAlertController(
         title: "Location Permission Required",
-        message: "To show your current location, enable location access in Settings > Privacy & Security > Location Services > YourApp.",
+        message: GPSLocationError.authorizationDenied.localizedDescription,
+        // Will be: "Location access is disabled for this app. You can enable it in Settings > Privacy > Location Services."
         preferredStyle: .alert
     )
 
@@ -85,13 +114,15 @@ func handleAuthorizationDenied() {
 
 ### Authorization Denied Globally
 
-Location Services are turned off system-wide:
+Location Services are turned off system-wide. LocationProvider automatically distinguishes between app-specific and system-wide permission issues:
 
 ```swift
 func handleGlobalLocationServicesDisabled() {
+    // LocationProvider automatically detects system-wide vs app-specific denial
     let alert = UIAlertController(
         title: "Location Services Disabled",
-        message: "Location Services are turned off. Enable them in Settings > Privacy & Security > Location Services to use location features.",
+        message: GPSLocationError.authorizationDeniedGlobally.localizedDescription,
+        // Will be: "Location Services are turned off. Please enable them in Settings > Privacy > Location Services."
         preferredStyle: .alert
     )
 
@@ -121,7 +152,9 @@ func handleRestrictedAccess() {
 
 ### Location Not Found
 
-GPS cannot determine the device's position:
+GPS cannot determine the device's position. This is now distinguished from authorization errors:
+
+> **Improvement**: Previously, authorization denials and technical failures both appeared as "location not found". Now they're clearly separated.
 
 ```swift
 func handleLocationNotFound() {
@@ -143,13 +176,15 @@ func handleLocationNotFound() {
 
 ### Location Unavailable
 
-Location services are temporarily unavailable:
+Location services are temporarily unavailable. Multiple CLError types are intelligently mapped to this category:
 
 ```swift
 func handleLocationUnavailable() {
-    // Show temporary message with retry option
+    // LocationProvider maps multiple CLError types to this category:
+    // CLError.locationUnknown, .network, .deferredAccuracyTooLow, etc.
     showMessage(
-        "Location temporarily unavailable. This may be due to poor GPS signal or airplane mode being enabled.",
+        GPSLocationError.locationUnavailable.localizedDescription,
+        // Will be: "Location services are temporarily unavailable. This might be due to no GPS signal or airplane mode being enabled."
         withRetry: true
     )
 }
@@ -162,18 +197,18 @@ Address lookup failed but location coordinates are still available:
 ```swift
 do {
     let location = try await LocationProvider().gpsLocation()
-    // Success - location.name will be "GPS" if reverse geocoding failed
-    print("Location: \(location.name)")
+    // Success - location.name will be nil if reverse geocoding failed
+    print("Location: \(location.name ?? "GPS")")
 } catch GPSLocationError.reverseGeocoding {
     // This actually won't be thrown - reverse geocoding failures
-    // result in location.name defaulting to "GPS"
+    // result in location.name being nil rather than throwing an error
     print("Got coordinates but couldn't determine address")
 } catch {
-    // Handle other errors
+    // Handle other errors (now much more specific thanks to improved error propagation)
 }
 ```
 
-> Note: LocationProvider gracefully handles reverse geocoding failures by setting the location name to "GPS" rather than throwing an error. The location coordinates are still available.
+> **Note**: LocationProvider gracefully handles reverse geocoding failures by setting the location name to `nil` rather than throwing an error. The location coordinates are still available. This ensures users always get their location even if address lookup fails.
 
 ## SwiftUI Error Handling
 

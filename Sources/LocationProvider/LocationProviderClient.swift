@@ -22,8 +22,21 @@ extension LocationProvider {
     struct Client {
         /// Provides an asynchronous stream of location updates.
         ///
-        /// - Returns: An `AsyncStream` of `LocationUpdate` instances representing changes in location or authorization status.
-        var updates: () -> AsyncStream<LocationUpdate>
+        /// - Returns: An `AsyncThrowingStream` of `LocationUpdate` instances representing changes in location or authorization status.
+        ///
+        /// - Throws: The stream may throw the following errors:
+        ///   - `CLError`: Core Location errors including:
+        ///     - `.denied`: User denied location permissions (mapped to `GPSLocationError.authorizationDenied` or `.authorizationDeniedGlobally`)
+        ///     - `.locationUnknown`: Unable to determine location (mapped to `GPSLocationError.locationUnavailable`)
+        ///     - `.network`: Network-related failure (mapped to `GPSLocationError.locationUnavailable`)
+        ///   - `CancellationError`: When the stream is cancelled (filtered out, not surfaced to users)
+        ///   - Other system errors from CLLocationUpdate.liveUpdates()
+        ///
+        /// - Important: This stream MUST propagate errors from CLLocationUpdate.liveUpdates() rather than swallowing them.
+        ///   Authorization and hardware errors need to surface with specific, actionable messages so users can
+        ///   understand and resolve permission/hardware issues (e.g., "Location access denied" with Settings instructions
+        ///   vs generic "location not found").
+        var updates: () -> AsyncThrowingStream<LocationUpdate, Error>
         /// Converts a physical location to a human-readable place name.
         ///
         /// - Parameter location: The `CLLocation` to reverse geocode
@@ -39,7 +52,7 @@ extension LocationProvider {
         static let live = Self(
             updates: {
                 logger.debug("updates called")
-                return AsyncStream { continuation in
+                return AsyncThrowingStream { continuation in
                     let task = Task {
                         do {
                             for try await update in CLLocationUpdate.liveUpdates() {
@@ -49,10 +62,16 @@ extension LocationProvider {
                                 }
                                 continuation.yield(update)
                             }
+                            continuation.finish()
                         } catch {
-                            logger.error("Location stream error: \(error)")
+                            if error is CancellationError {
+                                logger.debug("Location stream cancelled")
+                                continuation.finish()
+                            } else {
+                                logger.error("Location stream error: \(error)")
+                                continuation.finish(throwing: error)
+                            }
                         }
-                        continuation.finish()
                     }
                     continuation.onTermination = { @Sendable termination in
                         switch termination {
@@ -91,7 +110,7 @@ extension LocationProvider {
         ) -> Self {
             Self(
                 updates: {
-                    AsyncStream { continuation in
+                    AsyncThrowingStream { continuation in
                         Task {
                             for update in updates {
                                 continuation.yield(update)

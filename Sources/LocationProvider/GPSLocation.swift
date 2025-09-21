@@ -68,7 +68,7 @@ public struct GPSLocation: CustomStringConvertible, Sendable, Equatable {
             location: CLLocation(latitude: 40.758896, longitude: -73.985130)
         )
 
-        static let granndCanyon = GPSLocation(
+        static let grandCanyon = GPSLocation(
             name: "Grand Canyon Visitor Center",
             location: CLLocation(latitude: 36.054445, longitude: -112.134166)
         )
