@@ -49,6 +49,29 @@ do {
 }
 ```
 
+### Requesting Precise Locations
+
+By default the provider returns the first available fix, even if the system supplies reduced-accuracy coordinates. To require a precise reading, pass the accuracy requirement explicitly:
+
+```swift
+let preciseLocation = try await provider.gpsLocation(accuracyRequirement: .precise)
+```
+
+### Tuning Acquisition Timing
+
+You can adjust how aggressively the provider waits for a fix by supplying a `LocationProvider.Configuration` when constructing the provider:
+
+```swift
+let configuration = LocationProvider.Configuration(
+    locationAcquisitionTimeout: .seconds(45),
+    locationUnavailableGracePeriod: .seconds(20)
+)
+
+let provider = LocationProvider(configuration: configuration)
+```
+
+The defaults (`30s` timeout, `25s` grace) work well for foreground usage. Increase the values if your app can tolerate longer waits for a high-quality fix; decrease them for faster failure modes (for example, a Weather app that can fall back to cached data).
+
 ### Handling Permissions
 
 The framework automatically handles location permission requests and provides clear error messages for various authorization states. Make sure to add the required usage description keys to your Info.plist:
@@ -72,6 +95,7 @@ The framework provides detailed error cases through `GPSLocationError`:
 - `locationUnavailable`: Location services temporarily unavailable
 - `serviceSessionRequired`: Required service session not active
 - `reverseGeocoding`: Failed to convert coordinates to address
+- `preciseLocationRequired`: User granted only approximate location but the feature needs precise access
 
 #### Advanced Error Handling Example
 
