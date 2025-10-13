@@ -118,11 +118,6 @@ struct MockLocationUpdate: LocationUpdate {
 // MARK: - Factory Methods
 
 extension MockLocationUpdate {
-    /// Creates a mock representing an authorized state with a specific location.
-    static func authorized(with location: CLLocation) -> Self {
-        Self(location: location)
-    }
-
     /// Creates a mock representing a denied authorization state.
     static func denied() -> Self {
         Self(

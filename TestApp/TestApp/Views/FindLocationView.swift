@@ -61,6 +61,19 @@ struct FindLocationView: View {
                 Text(message)
                     .font(.title3)
                     .foregroundStyle(.red)
+
+                Button(action: {
+                    Task {
+                        await openLocationSettings()
+                    }
+                }) {
+                    Text("Open Location Settings")
+                        .padding()
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                }
+
                 Button(action: {
                     model.reset()
                 }) {

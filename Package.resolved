@@ -1,0 +1,15 @@
+{
+  "originHash" : "7fc06538577baa80b2520e9c91d68a3b52e8d44819dab2baeb3e55b78e503711",
+  "pins" : [
+    {
+      "identity" : "spearfoundation",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/kraigspear/Spearfoundation",
+      "state" : {
+        "branch" : "main",
+        "revision" : "3cd67d59585aabf0ce8a679d719b8c3203713c08"
+      }
+    }
+  ],
+  "version" : 3
+}
