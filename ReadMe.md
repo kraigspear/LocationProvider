@@ -94,7 +94,6 @@ The framework provides detailed error cases through `GPSLocationError`:
 - `notFound`: Unable to determine location
 - `locationUnavailable`: Location services temporarily unavailable
 - `serviceSessionRequired`: Required service session not active
-- `reverseGeocoding`: Failed to convert coordinates to address
 - `preciseLocationRequired`: User granted only approximate location but the feature needs precise access
 
 #### Advanced Error Handling Example
@@ -114,6 +113,55 @@ do {
     showLocationUnavailableAlert()
 } catch {
     print("Unexpected error: \(error)")
+}
+```
+
+### Opening Location Settings
+
+When permission errors occur, you can help users fix the problem by opening the location settings:
+
+```swift
+import LocationProvider
+
+do {
+    let location = try await provider.gpsLocation()
+} catch GPSLocationError.authorizationDenied {
+    // Show alert with option to open settings
+    Button("Open Location Settings") {
+        Task {
+            await openLocationSettings()
+        }
+    }
+} catch {
+    // Handle other errors
+}
+```
+
+The `openLocationSettings()` function opens the appropriate settings screen:
+- **iOS**: Opens your app's settings page where location permissions can be managed
+- **macOS**: Opens Security & Privacy → Location Services in System Settings
+
+#### SwiftUI Example
+
+```swift
+struct LocationView: View {
+    @State private var error: GPSLocationError?
+
+    var body: some View {
+        VStack {
+            if let error = error {
+                Text(error.localizedDescription)
+                    .foregroundStyle(.red)
+
+                Button("Open Location Settings") {
+                    Task {
+                        await openLocationSettings()
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+            }
+        }
+    }
 }
 ```
 

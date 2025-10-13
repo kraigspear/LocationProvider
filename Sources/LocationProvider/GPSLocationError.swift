@@ -24,8 +24,6 @@ public enum GPSLocationError: LocalizedError {
     case locationUnavailable
     /// A service session (like Find My) is required but not active
     case serviceSessionRequired
-    /// Attempt to get the name through reverse geocoding failed
-    case reverseGeocoding
 
     /// User granted approximate location permission but the app requires precise location.
     ///
@@ -70,8 +68,6 @@ public enum GPSLocationError: LocalizedError {
             "Location services are temporarily unavailable. This might be due to no GPS signal or airplane mode being enabled."
         case .serviceSessionRequired:
             "This feature requires an active service session. Please ensure necessary services like Find My are enabled."
-        case .reverseGeocoding:
-            "Failed to convert location coordinates to an address. This may be due to network issues or the location being unmapped."
         case .preciseLocationRequired:
             "Precise location is required but only approximate location is available. Enable Precise Location in Settings > Privacy & Security > Location Services > \(Bundle.main.displayName) to share your exact location."
         }

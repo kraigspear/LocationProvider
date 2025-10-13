@@ -16,11 +16,17 @@ let package = Package(
             targets: ["LocationProvider"]
         ),
     ],
+    dependencies: [
+        .package(url: "https://github.com/kraigspear/Spearfoundation", branch: "main"),
+    ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
         // Targets can depend on other targets in this package and products from dependencies.
         .target(
             name: "LocationProvider",
+            dependencies: [
+                .product(name: "SpearFoundation", package: "SpearFoundation"),
+            ],
             swiftSettings: [
                 .enableUpcomingFeature("StrictConcurrency"),
             ]
