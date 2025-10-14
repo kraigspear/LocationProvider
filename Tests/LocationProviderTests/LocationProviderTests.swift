@@ -184,6 +184,32 @@ struct LocationProviderTest {
                 _ = try await locationProvider.gpsLocation(accuracyRequirement: .precise)
             }
         }
+
+        @Test("Prompt declined for precise location surfaces preciseLocationRequired")
+        func promptDeclinedForPreciseLocationSurfacesPreciseLocationRequired() async throws {
+            // Given: A location stream that throws CLError.promptDeclined, simulating the scenario
+            // where the user dismisses the iOS "Precise Location" permission prompt without granting
+            // precise accuracy. This occurs when an app with approximate location permission requests
+            // precise location and the user declines the system prompt.
+            let updateStream = AsyncThrowingStream<LocationUpdate, Error> { continuation in
+                continuation.finish(throwing: CLError(.promptDeclined))
+            }
+
+            let client = LocationProvider.Client(
+                updates: { updateStream },
+                reverseGeocodeLocation: { _ in nil }
+            )
+
+            let locationProvider = LocationProvider(client: client)
+
+            // When: The app calls gpsLocation() with precise accuracy requirement
+            // Then: The CLError.promptDeclined should be correctly mapped to GPSLocationError.preciseLocationRequired,
+            // providing actionable guidance to users on how to enable precise location in Settings rather than
+            // surfacing a generic system error that doesn't explain what went wrong or how to fix it.
+            await #expect(throws: GPSLocationError.preciseLocationRequired, "CLError.promptDeclined must map to GPSLocationError.preciseLocationRequired to provide users with actionable guidance on enabling precise location in Settings, distinguishing this user choice from other authorization failures") {
+                _ = try await locationProvider.gpsLocation(accuracyRequirement: .precise)
+            }
+        }
     }
 
     @MainActor
