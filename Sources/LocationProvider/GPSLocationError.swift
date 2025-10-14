@@ -9,20 +9,59 @@ import CoreLocation
 import Foundation
 
 /// Represents possible errors that can occur during GPS location operations.
+///
+/// This enum abstracts Core Location's complex error model into actionable GPS-specific errors.
+/// Each case maps to specific user guidance in errorDescription, enabling apps to show
+/// contextual help without reimplementing Core Location error logic everywhere.
 public enum GPSLocationError: LocalizedError {
     /// Location access is restricted by parental controls or device management
+    ///
+    /// Why this exists: Users with managed devices (MDM, Screen Time) may have location
+    /// services restricted by policy. This case distinguishes policy restrictions from
+    /// user choice (denied), enabling appropriate messaging that directs users to their
+    /// administrator rather than Settings.
     case authorizationRestricted
+
     /// Location services are temporarily unavailable or cannot determine position
+    ///
+    /// Why this exists: Represents transient failures (no GPS signal, airplane mode, hardware
+    /// issues) that may resolve without user action. Grouped separately from authorization
+    /// errors to suggest "wait and retry" rather than "change settings."
     case notFound
+
     /// User has explicitly denied location permissions for this app
+    ///
+    /// Why this exists: The most common authorization failure. Requires user to explicitly
+    /// enable location for this specific app in Settings. Distinguished from global denial
+    /// to provide precise Settings navigation path in error message.
     case authorizationDenied
+
     /// Location services are disabled system-wide in device settings
+    ///
+    /// Why this exists: When Location Services are off for ALL apps, users need different
+    /// guidance than app-specific denial. This case ensures error messages direct users to
+    /// the correct Settings path (system-level toggle vs app-specific permissions).
     case authorizationDeniedGlobally
+
     /// Current authorization level is not sufficient for the required location features
+    ///
+    /// Why this exists: Apps may have "When In Use" but need "Always", or similar scenarios
+    /// where partial authorization exists but isn't sufficient. This provides specific guidance
+    /// about upgrading permissions rather than generic "denied" messaging.
     case insufficientlyInUse
+
     /// Location services are currently unavailable (e.g., no GPS signal, hardware issues)
+    ///
+    /// Why this exists: Consolidates multiple transient CLError cases (locationUnknown, network,
+    /// deferred failures, etc.) into one user-facing error. Avoids exposing implementation
+    /// details about deferred updates or network-assisted location to end users.
     case locationUnavailable
+
     /// A service session (like Find My) is required but not active
+    ///
+    /// Why this exists: Some location features require active service sessions. This provides
+    /// specific guidance about enabling required services rather than generic "unavailable"
+    /// messages that don't explain what action to take.
     case serviceSessionRequired
 
     /// User granted approximate location permission but the app requires precise location.
@@ -31,23 +70,51 @@ public enum GPSLocationError: LocalizedError {
     /// for privacy. This error occurs when the app requests precise location but the user has only
     /// granted approximate location access. Users can enable precise location in Settings > Privacy
     /// & Security > Location Services > [App Name] > Precise Location.
+    ///
+    /// Why this exists: iOS 14+ introduced approximate location as a privacy feature. Apps requiring
+    /// precise coordinates (navigation, geo-fencing) need to detect and guide users through enabling
+    /// Precise Location. Without this case, apps would receive location data but be silently degraded,
+    /// leading to confusing failures.
     case preciseLocationRequired
 
+    /// Creates a GPS error from a location update's state.
+    ///
+    /// This initializer examines the boolean flags in a LocationUpdate to determine if an error
+    /// condition exists. We check flags in priority order to ensure users receive the most accurate
+    /// guidance when multiple error conditions are true.
+    ///
+    /// Priority ordering rationale:
+    /// 1. Global denial checked first because when Location Services are disabled system-wide,
+    ///    Core Location reports authorizationStatus == .denied AND locationServicesEnabled() == false,
+    ///    causing BOTH authorizationDenied and authorizationDeniedGlobally flags to be true.
+    ///    Checking global first ensures we direct users to the correct Settings path (system toggle
+    ///    vs app-specific permissions).
+    /// 2. Other authorization issues (restricted, denied, insufficient) follow since they require
+    ///    explicit user action.
+    /// 3. Transient system issues (unavailable, session required) checked last since they may
+    ///    resolve without user intervention.
+    ///
+    /// - Parameter update: The location update containing state information
+    /// - Returns: A GPSLocationError if any error condition is detected, nil if the update is valid
     init?(locationUpdate update: LocationUpdate) {
-        switch true {
-        case update.authorizationDenied:
-            self = .authorizationDenied
-        case update.authorizationDeniedGlobally:
+        // Check global denial FIRST - when Location Services are off system-wide, both
+        // authorizationDenied and authorizationDeniedGlobally are true. We must prioritize
+        // the global case to direct users to the system-level toggle, not app settings.
+        if update.authorizationDeniedGlobally {
             self = .authorizationDeniedGlobally
-        case update.authorizationRestricted:
+        } else if update.authorizationRestricted {
             self = .authorizationRestricted
-        case update.insufficientlyInUse:
+        } else if update.authorizationDenied {
+            self = .authorizationDenied
+        } else if update.insufficientlyInUse {
             self = .insufficientlyInUse
-        case update.locationUnavailable:
+            // Then check transient system issues
+        } else if update.locationUnavailable {
             self = .locationUnavailable
-        case update.serviceSessionRequired:
+        } else if update.serviceSessionRequired {
             self = .serviceSessionRequired
-        default:
+        } else {
+            // No error condition detected - this is a valid update
             return nil
         }
     }
@@ -69,6 +136,10 @@ public enum GPSLocationError: LocalizedError {
         case .serviceSessionRequired:
             "This feature requires an active service session. Please ensure necessary services like Find My are enabled."
         case .preciseLocationRequired:
+            // Note: We use Bundle.main.displayName because location permissions are granted at the
+            // app level, not the framework level. Even if this code runs in a framework context,
+            // the relevant Settings path uses the main app's name. The BundleExtensions fallback
+            // to "this app" handles edge cases where CFBundleDisplayName is unavailable.
             "Precise location is required but only approximate location is available. Enable Precise Location in Settings > Privacy & Security > Location Services > \(Bundle.main.displayName) to share your exact location."
         }
     }
@@ -110,6 +181,13 @@ extension GPSLocationError {
             } else {
                 self = .authorizationDenied
             }
+        case .promptDeclined:
+            // User dismissed the "Precise Location" prompt without granting precise accuracy.
+            // This occurs when the app requests precise location but the user has approximate
+            // location enabled and chooses not to upgrade to precise when prompted by iOS.
+            // We map this to preciseLocationRequired to provide actionable guidance on how to
+            // enable precise location in Settings.
+            self = .preciseLocationRequired
         case .locationUnknown, .network, .deferredAccuracyTooLow, .deferredDistanceFiltered, .deferredCanceled, .deferredFailed, .headingFailure:
             // These are all transient errors where location hardware/service is temporarily
             // unable to determine position. We map them all to locationUnavailable since

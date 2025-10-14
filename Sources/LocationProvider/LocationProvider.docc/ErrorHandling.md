@@ -39,10 +39,58 @@ public enum GPSLocationError: LocalizedError {
     case insufficientlyInUse       // Need "Always" but have "When In Use"
     case locationUnavailable       // GPS temporarily unavailable
     case serviceSessionRequired    // Find My session needed
+    case preciseLocationRequired   // User has approximate location but precise is needed
 }
 ```
 
 > **Important**: Each error now provides specific, user-friendly messages through `localizedDescription`. These messages tell users exactly what's wrong and how to fix it, eliminating the need for generic error handling.
+
+## Precision-Related Errors
+
+### Precise Location Required
+
+iOS 14+ allows users to grant only approximate location access (~1-20km accuracy) for privacy. This error occurs in two scenarios:
+
+1. User has granted approximate location and dismisses the iOS "Precise Location" upgrade prompt
+2. App explicitly requests precise location but user has only granted approximate access
+
+```swift
+func handlePreciseLocationRequired() {
+    // User dismissed the precise location prompt or has only approximate location enabled
+    let alert = UIAlertController(
+        title: "Precise Location Needed",
+        message: GPSLocationError.preciseLocationRequired.localizedDescription,
+        // Will be: "Precise location is required but only approximate location is available.
+        // Enable Precise Location in Settings > Privacy & Security > Location Services >
+        // [App Name] to share your exact location."
+        preferredStyle: .alert
+    )
+
+    alert.addAction(UIAlertAction(title: "Open Settings", style: .default) { _ in
+        if let url = URL(string: UIApplication.openSettingsURLString) {
+            UIApplication.shared.open(url)
+        }
+    })
+
+    alert.addAction(UIAlertAction(title: "Use Approximate Location", style: .cancel) { _ in
+        // Optionally fall back to .any accuracy requirement
+        Task {
+            do {
+                let location = try await LocationProvider().gpsLocation(accuracyRequirement: .any)
+                handleLocationSuccess(location)
+            } catch {
+                handleLocationError(error)
+            }
+        }
+    })
+
+    present(alert, animated: true)
+}
+```
+
+> **Note**: When requesting precise location with `gpsLocation(accuracyRequirement: .precise)`, iOS may show a system prompt asking users to upgrade from approximate to precise location. If users dismiss this prompt, `CLError.promptDeclined` is thrown and automatically mapped to `GPSLocationError.preciseLocationRequired`.
+
+> **Best Practice**: Only request `.precise` accuracy when your feature genuinely requires it (navigation, geo-fencing, delivery tracking). Many features work fine with `.any` (the default), which accepts approximate location and respects user privacy.
 
 ## Basic Error Handling Pattern
 
