@@ -133,6 +133,60 @@ func handleRestrictedAccess() {
 }
 ```
 
+### Precise vs Approximate Location (iOS 14+)
+
+Starting in iOS 14, users can choose between precise and approximate location for privacy. Approximate location provides ~1-20km accuracy, which is sufficient for many features like weather, timezone detection, or regional content.
+
+```swift
+// Request precise location explicitly
+do {
+    let location = try await locationProvider.gpsLocation(accuracyRequirement: .precise)
+    // Use precise coordinates for navigation, geo-fencing, etc.
+} catch GPSLocationError.preciseLocationRequired {
+    // User has only granted approximate location or dismissed the upgrade prompt
+    showPreciseLocationExplanation()
+}
+
+func showPreciseLocationExplanation() {
+    let alert = UIAlertController(
+        title: "Enable Precise Location",
+        message: GPSLocationError.preciseLocationRequired.localizedDescription,
+        // Will be: "Precise location is required but only approximate location is available.
+        // Enable Precise Location in Settings > Privacy & Security > Location Services >
+        // [App Name] to share your exact location."
+        preferredStyle: .alert
+    )
+
+    alert.addAction(UIAlertAction(title: "Open Settings", style: .default) { _ in
+        if let url = URL(string: UIApplication.openSettingsURLString) {
+            UIApplication.shared.open(url)
+        }
+    })
+
+    alert.addAction(UIAlertAction(title: "Use Approximate", style: .cancel) { _ in
+        // Fall back to approximate location
+        Task {
+            do {
+                let location = try await LocationProvider().gpsLocation(accuracyRequirement: .any)
+                handleApproximateLocation(location)
+            } catch {
+                handleError(error)
+            }
+        }
+    })
+
+    present(alert, animated: true)
+}
+```
+
+> **Important**: When you request `.precise` accuracy and the user has approximate location enabled, iOS shows a system prompt asking to upgrade to precise location. If the user dismisses this prompt, `CLError.promptDeclined` is automatically mapped to `GPSLocationError.preciseLocationRequired`.
+
+> **Best Practice**: Only request `.precise` accuracy when your feature genuinely requires it:
+> - **Needs Precise**: Navigation, geo-fencing, delivery tracking, location sharing, fitness tracking
+> - **Works with Approximate**: Weather, timezone detection, regional content, city-level features, nearby search
+>
+> Using `.any` (the default) accepts approximate location and respects user privacy preferences.
+
 ## SwiftUI Permission Handling
 
 Here's how to handle permissions in SwiftUI:

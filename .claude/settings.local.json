@@ -6,7 +6,8 @@
       "Bash(git add:*)",
       "Bash(./scan.sh:*)",
       "Bash(xcodebuild:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git show:*)"
     ],
     "deny": [],
     "ask": []
