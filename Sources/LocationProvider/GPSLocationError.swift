@@ -80,23 +80,35 @@ public enum GPSLocationError: LocalizedError {
     /// Creates a GPS error from a location update's state.
     ///
     /// This initializer examines the boolean flags in a LocationUpdate to determine if an error
-    /// condition exists. We check flags in priority order: authorization issues first (which require
-    /// user action), then system-level issues (which may be transient). This ordering ensures users
-    /// see the most actionable error when multiple conditions are true.
+    /// condition exists. We check flags in priority order to ensure users receive the most accurate
+    /// guidance when multiple error conditions are true.
+    ///
+    /// Priority ordering rationale:
+    /// 1. Global denial checked first because when Location Services are disabled system-wide,
+    ///    Core Location reports authorizationStatus == .denied AND locationServicesEnabled() == false,
+    ///    causing BOTH authorizationDenied and authorizationDeniedGlobally flags to be true.
+    ///    Checking global first ensures we direct users to the correct Settings path (system toggle
+    ///    vs app-specific permissions).
+    /// 2. Other authorization issues (restricted, denied, insufficient) follow since they require
+    ///    explicit user action.
+    /// 3. Transient system issues (unavailable, session required) checked last since they may
+    ///    resolve without user intervention.
     ///
     /// - Parameter update: The location update containing state information
     /// - Returns: A GPSLocationError if any error condition is detected, nil if the update is valid
     init?(locationUpdate update: LocationUpdate) {
-        // Check authorization issues first - these require explicit user action
-        if update.authorizationDenied {
-            self = .authorizationDenied
-        } else if update.authorizationDeniedGlobally {
+        // Check global denial FIRST - when Location Services are off system-wide, both
+        // authorizationDenied and authorizationDeniedGlobally are true. We must prioritize
+        // the global case to direct users to the system-level toggle, not app settings.
+        if update.authorizationDeniedGlobally {
             self = .authorizationDeniedGlobally
         } else if update.authorizationRestricted {
             self = .authorizationRestricted
+        } else if update.authorizationDenied {
+            self = .authorizationDenied
         } else if update.insufficientlyInUse {
             self = .insufficientlyInUse
-        // Then check transient system issues
+            // Then check transient system issues
         } else if update.locationUnavailable {
             self = .locationUnavailable
         } else if update.serviceSessionRequired {
