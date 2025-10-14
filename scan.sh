@@ -1,0 +1,2 @@
+xcodebuild -scheme LocationProvider -destination 'platform=iOS Simulator,OS=26.0,name=iPhone 16 Pro' -derivedDataPath '../dd' clean build
+periphery scan --skip-build --index-store-path '../dd/Index.noindex/DataStore/'

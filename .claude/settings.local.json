@@ -3,7 +3,10 @@
     "allow": [
       "Bash(swift test)",
       "Bash(swiftformat:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(./scan.sh:*)",
+      "Bash(xcodebuild:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
