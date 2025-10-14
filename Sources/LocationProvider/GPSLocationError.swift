@@ -108,7 +108,7 @@ public enum GPSLocationError: LocalizedError {
             self = .authorizationDenied
         } else if update.insufficientlyInUse {
             self = .insufficientlyInUse
-        // Then check transient system issues
+            // Then check transient system issues
         } else if update.locationUnavailable {
             self = .locationUnavailable
         } else if update.serviceSessionRequired {
