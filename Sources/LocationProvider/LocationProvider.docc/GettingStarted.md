@@ -51,7 +51,7 @@ let locationProvider = LocationProvider()
 // Request the current location
 do {
     let location = try await locationProvider.gpsLocation()
-    print("Current location: \(location.name ?? "GPS")")
+    print("Current location: \(location.name)")
     print("Coordinates: \(location.location.coordinate.latitude), \(location.location.coordinate.longitude)")
 } catch {
     // LocationProvider provides specific, actionable error messages
@@ -64,7 +64,7 @@ do {
 
 When you call `gpsLocation()`, LocationProvider returns a ``GPSLocation`` object that contains:
 
-- **`name`**: A human-readable location name (e.g., "San Francisco") or `nil` if reverse geocoding fails
+- **`name`**: A human-readable location name (e.g., "San Francisco") or `"GPS"` if reverse geocoding fails
 - **`location`**: The raw `CLLocation` object with coordinates, accuracy, and timestamp
 
 > **Important**: LocationProvider now provides specific, actionable error messages when location requests fail. Instead of generic "location not found" errors, you'll get clear guidance like "Location access is disabled for this app. You can enable it in Settings > Privacy > Location Services."
@@ -72,8 +72,8 @@ When you call `gpsLocation()`, LocationProvider returns a ``GPSLocation`` object
 ```swift
 let gpsLocation = try await locationProvider.gpsLocation()
 
-// Access the readable name (nil if reverse geocoding failed)
-print("You are in: \(gpsLocation.name ?? "Unknown location")")
+// Access the readable name (defaults to "GPS" if reverse geocoding failed)
+print("You are in: \(gpsLocation.name)")
 
 // Access coordinate details
 let coordinate = gpsLocation.location.coordinate

@@ -39,7 +39,6 @@ public enum GPSLocationError: LocalizedError {
     case insufficientlyInUse       // Need "Always" but have "When In Use"
     case locationUnavailable       // GPS temporarily unavailable
     case serviceSessionRequired    // Find My session needed
-    case reverseGeocoding         // Address lookup failed
 }
 ```
 
@@ -190,25 +189,27 @@ func handleLocationUnavailable() {
 }
 ```
 
-### Reverse Geocoding Failure
+### Reverse Geocoding Behavior
 
-Address lookup failed but location coordinates are still available:
+LocationProvider gracefully handles reverse geocoding failures without throwing errors:
 
 ```swift
 do {
     let location = try await LocationProvider().gpsLocation()
-    // Success - location.name will be nil if reverse geocoding failed
-    print("Location: \(location.name ?? "GPS")")
-} catch GPSLocationError.reverseGeocoding {
-    // This actually won't be thrown - reverse geocoding failures
-    // result in location.name being nil rather than throwing an error
-    print("Got coordinates but couldn't determine address")
+    // location.name defaults to "GPS" if reverse geocoding failed
+    if location.name == "GPS" {
+        print("Location coordinates available but address lookup failed")
+        print("Coordinates: \(location.location.coordinate)")
+    } else {
+        print("Location: \(location.name)")
+    }
 } catch {
-    // Handle other errors (now much more specific thanks to improved error propagation)
+    // Handle location acquisition errors
+    print("Location error: \(error.localizedDescription)")
 }
 ```
 
-> **Note**: LocationProvider gracefully handles reverse geocoding failures by setting the location name to `nil` rather than throwing an error. The location coordinates are still available. This ensures users always get their location even if address lookup fails.
+> **Note**: LocationProvider gracefully handles reverse geocoding failures by setting the location name to `"GPS"` rather than throwing an error. The location coordinates are still available, ensuring users always get their location even if address lookup fails.
 
 ## SwiftUI Error Handling
 

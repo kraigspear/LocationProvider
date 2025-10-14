@@ -51,7 +51,7 @@ classDiagram
         +insufficientlyInUse
         +locationUnavailable
         +serviceSessionRequired
-        +reverseGeocoding
+        +preciseLocationRequired
         +init?(locationUpdate: LocationUpdate)
     }
     

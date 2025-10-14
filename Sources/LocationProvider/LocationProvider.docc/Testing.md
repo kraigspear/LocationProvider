@@ -279,9 +279,9 @@ func testReverseGeocodingFailure() async throws {
     )
     let provider = LocationProvider(client: client)
 
-    // Should still succeed but with nil name
+    // Should still succeed but with default "GPS" name
     let location = try await provider.gpsLocation()
-    #expect(location.name == nil)  // Name is nil when geocoding fails
+    #expect(location.name == "GPS")  // Name defaults to "GPS" when geocoding fails
     #expect(location.location == testLocation)
 
     // Verify coordinates are still available despite geocoding failure
@@ -707,8 +707,8 @@ func testSimulatorLocation() async throws {
 
     do {
         let location = try await provider.gpsLocation()
-        print("Simulator location: \(location.name ?? "GPS")")
-        #expect(location.name != nil)  // Should have reverse geocoded name
+        print("Simulator location: \(location.name)")
+        #expect(location.name != "GPS")  // Should have reverse geocoded name (not default)
     } catch let error as GPSLocationError {
         // Expected in CI/testing environments - verify error messages are helpful
         print("Location error: \(error.localizedDescription)")
