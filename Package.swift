@@ -26,16 +26,21 @@ let package = Package(
             name: "LocationProvider",
             dependencies: [
                 .product(name: "SpearFoundation", package: "SpearFoundation"),
-            ],
-            swiftSettings: [
-                .enableUpcomingFeature("StrictConcurrency"),
             ]
         ),
         .testTarget(
             name: "LocationProviderTests",
-            dependencies: ["LocationProvider"], swiftSettings: [
-                .enableUpcomingFeature("StrictConcurrency"),
-            ]
+            dependencies: ["LocationProvider"]
         ),
     ]
 )
+
+// Enable Approachable Concurrency for all targets
+for target in package.targets {
+    var settings = target.swiftSettings ?? []
+    settings.append(contentsOf: [
+        .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
+        .enableUpcomingFeature("InferIsolatedConformances"),
+    ])
+    target.swiftSettings = settings
+}
