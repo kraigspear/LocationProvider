@@ -43,14 +43,12 @@ public struct GPSLocation: CustomStringConvertible, Sendable, Equatable {
         // Major tech company headquarters
         static let appleHQ = GPSLocation(
             name: "Apple Park",
-            location: CLLocation(latitude: 37.334922, longitude: -122.009033)
-        )
+            location: CLLocation(latitude: 37.334922, longitude: -122.009033))
 
         // Famous landmarks
         static let statueOfLiberty = GPSLocation(
             name: "Statue of Liberty",
-            location: CLLocation(latitude: 40.689247, longitude: -74.044502)
-        )
+            location: CLLocation(latitude: 40.689247, longitude: -74.044502))
     }
 
 #endif

@@ -76,8 +76,8 @@ public final class LocationProvider {
     /// - Returns: A `GPSLocation` object containing the location coordinates and optional name
     /// - Throws: `GPSLocationError.notFound` if unable to get a location, or other location-related errors
     public func gpsLocation(
-        accuracyRequirement: AccuracyRequirement = .any
-    ) async throws -> GPSLocation {
+        accuracyRequirement: AccuracyRequirement = .any) async throws -> GPSLocation
+    {
         logger.debug("Starting GPS location request")
 
         let firstLiveUpdate = try await firstLiveUpdate(accuracyRequirement: accuracyRequirement)
@@ -95,8 +95,7 @@ public final class LocationProvider {
 
         return .init(
             name: name,
-            location: firstLiveUpdate
-        )
+            location: firstLiveUpdate)
     }
 
     // MARK: - Private Methods
@@ -113,8 +112,8 @@ public final class LocationProvider {
     /// - Throws: `GPSLocationError.notFound` if no valid location can be obtained,
     ///          or other relevant `GPSLocationError` cases based on the update state
     private func firstLiveUpdate(
-        accuracyRequirement: AccuracyRequirement
-    ) async throws -> CLLocation {
+        accuracyRequirement: AccuracyRequirement) async throws -> CLLocation
+    {
         logger.debug("Starting live update monitoring")
 
         let clock = ContinuousClock()
@@ -136,7 +135,7 @@ public final class LocationProvider {
                 }
 
                 if let location = update.location {
-                    if update.accuracyLimited && !accuracyRequirement.acceptsReducedAccuracy {
+                    if update.accuracyLimited, !accuracyRequirement.acceptsReducedAccuracy {
                         logger.debug("Limited accuracy location received but precise accuracy required; continuing")
                         lastTransientError = .preciseLocationRequired
                         continue
@@ -235,8 +234,8 @@ public extension LocationProvider {
 
         public init(
             locationAcquisitionTimeout: Duration = .seconds(30),
-            locationUnavailableGracePeriod: Duration = .seconds(25)
-        ) {
+            locationUnavailableGracePeriod: Duration = .seconds(25))
+        {
             self.locationAcquisitionTimeout = locationAcquisitionTimeout
             self.locationUnavailableGracePeriod = locationUnavailableGracePeriod
         }

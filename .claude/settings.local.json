@@ -12,7 +12,9 @@
       "Bash(git -C /Users/kraigspear/Projects/Klimate2 check-ignore .swift-version .swiftformat)",
       "Bash(cat:*)",
       "Bash(git -C /Users/kraigspear/Projects/LocationProvider check-ignore .swift-version .swiftformat)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(git rebase:*)",
+      "Bash(periphery scan:*)"
     ],
     "deny": [],
     "ask": []

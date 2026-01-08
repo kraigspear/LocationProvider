@@ -90,8 +90,7 @@ extension LocationProvider {
                 try await CLGeocoder()
                     .reverseGeocodeLocation(firstLiveUpdate)
                     .first(where: { $0.placemarkName != nil })?.placemarkName
-            }
-        )
+            })
     }
 }
 
@@ -106,8 +105,8 @@ extension LocationProvider {
         /// - Returns: A configured test client
         static func test(
             updates: [LocationUpdate],
-            reverseGeocodeLocation: Result<String?, Error>
-        ) -> Self {
+            reverseGeocodeLocation: Result<String?, Error>) -> Self
+        {
             Self(
                 updates: {
                     AsyncThrowingStream { continuation in
@@ -127,8 +126,7 @@ extension LocationProvider {
                     case let .failure(error):
                         throw error
                     }
-                }
-            )
+                })
         }
     }
 
