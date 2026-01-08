@@ -1,0 +1,9 @@
+--allman false
+--closingparen same-line
+--indent 4
+# Self usage
+--self remove
+# Organize imports
+--importgrouping alpha
+# Redundancy removal
+--redundanttype inferred

@@ -7,7 +7,12 @@
       "Bash(./scan.sh:*)",
       "Bash(xcodebuild:*)",
       "Bash(git commit:*)",
-      "Bash(git show:*)"
+      "Bash(git show:*)",
+      "Bash(git push:*)",
+      "Bash(git -C /Users/kraigspear/Projects/Klimate2 check-ignore .swift-version .swiftformat)",
+      "Bash(cat:*)",
+      "Bash(git -C /Users/kraigspear/Projects/LocationProvider check-ignore .swift-version .swiftformat)",
+      "Bash(git rm:*)"
     ],
     "deny": [],
     "ask": []
