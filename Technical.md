@@ -25,9 +25,9 @@ classDiagram
     }
     
     class Client {
-        +updates() -> AsyncThrowingStream<LocationUpdate, Error>
+        +updates(CLLocationUpdate.LiveConfiguration) -> AsyncThrowingStream<LocationUpdate, Error>
         +reverseGeocodeLocation(CLLocation) async throws -> String?
-        +static live: Client
+        +static func live() -> Client
         +static test(updates: [LocationUpdate], reverseGeocodeLocation: Result<String?, Error>) -> Client
     }
 
@@ -40,6 +40,7 @@ classDiagram
     class Configuration {
         +Duration locationAcquisitionTimeout
         +Duration locationUnavailableGracePeriod
+        +CLLocationUpdate.LiveConfiguration liveConfiguration
         +static default: Configuration
     }
 

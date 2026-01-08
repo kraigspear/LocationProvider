@@ -101,7 +101,7 @@ struct LocationProviderTest {
         }
 
         let client = LocationProvider.Client(
-            updates: { updateStream },
+            updates: { _ in updateStream },
             reverseGeocodeLocation: { _ in "KraigTown" })
 
         let locationProvider = LocationProvider(client: client)
@@ -123,7 +123,7 @@ struct LocationProviderTest {
         }
 
         let client = LocationProvider.Client(
-            updates: { updateStream },
+            updates: { _ in updateStream },
             reverseGeocodeLocation: { _ in nil })
 
         let locationProvider = LocationProvider(client: client)
@@ -164,7 +164,7 @@ struct LocationProviderTest {
             }
 
             let client = LocationProvider.Client(
-                updates: { updateStream },
+                updates: { _ in updateStream },
                 reverseGeocodeLocation: { _ in nil })
 
             let locationProvider = LocationProvider(client: client)
@@ -185,7 +185,7 @@ struct LocationProviderTest {
             }
 
             let client = LocationProvider.Client(
-                updates: { updateStream },
+                updates: { _ in updateStream },
                 reverseGeocodeLocation: { _ in nil })
 
             let locationProvider = LocationProvider(client: client)
@@ -202,6 +202,31 @@ struct LocationProviderTest {
 
     @MainActor
     struct Settings {
+        @Test("Live configuration forwarded to client updates")
+        func liveConfigurationForwarded() async throws {
+            let expectedLocation = CLLocation(latitude: 1, longitude: 1)
+            let expectedConfigurationDescription = String(describing: CLLocationUpdate.LiveConfiguration.fitness)
+
+            let updateStream = AsyncThrowingStream<LocationUpdate, Error> { continuation in
+                continuation.yield(MockLocationUpdate(location: expectedLocation))
+                continuation.finish()
+            }
+
+            let client = LocationProvider.Client(
+                updates: { liveConfiguration in
+                    #expect(String(describing: liveConfiguration) == expectedConfigurationDescription)
+                    return updateStream
+                },
+                reverseGeocodeLocation: { _ in nil })
+
+            let providerConfiguration = LocationProvider.Configuration(
+                liveConfiguration: .fitness)
+
+            let provider = LocationProvider(client: client, configuration: providerConfiguration)
+
+            _ = try await provider.gpsLocation()
+        }
+
         @Test("Custom acquisition timeout fails fast")
         func customTimeoutFailsFast() async throws {
             let updateStream = AsyncThrowingStream<LocationUpdate, Error> { continuation in
@@ -213,7 +238,7 @@ struct LocationProviderTest {
             }
 
             let client = LocationProvider.Client(
-                updates: { updateStream },
+                updates: { _ in updateStream },
                 reverseGeocodeLocation: { _ in nil })
 
             let configuration = LocationProvider.Configuration(

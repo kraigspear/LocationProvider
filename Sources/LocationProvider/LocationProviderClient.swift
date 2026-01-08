@@ -5,7 +5,7 @@
 //  Created by Kraig Spear on 1/26/25.
 //
 
-import CoreLocation
+@preconcurrency import CoreLocation
 import os.log
 
 private let logger = Logger(subsystem: "com.spearware.locationprovider", category: "Client")
@@ -22,6 +22,7 @@ extension LocationProvider {
     struct Client {
         /// Provides an asynchronous stream of location updates.
         ///
+        /// - Parameter liveConfiguration: The CoreLocation live update configuration preset.
         /// - Returns: An `AsyncThrowingStream` of `LocationUpdate` instances representing changes in location or authorization status.
         ///
         /// - Throws: The stream may throw the following errors:
@@ -36,7 +37,7 @@ extension LocationProvider {
         ///   Authorization and hardware errors need to surface with specific, actionable messages so users can
         ///   understand and resolve permission/hardware issues (e.g., "Location access denied" with Settings instructions
         ///   vs generic "location not found").
-        var updates: () -> AsyncThrowingStream<LocationUpdate, Error>
+        var updates: @Sendable (CLLocationUpdate.LiveConfiguration) -> AsyncThrowingStream<LocationUpdate, Error>
         /// Converts a physical location to a human-readable place name.
         ///
         /// - Parameter location: The `CLLocation` to reverse geocode
@@ -49,48 +50,50 @@ extension LocationProvider {
         /// This implementation:
         /// - Uses `CLLocationUpdate.liveUpdates()` for real-time location data
         /// - Employs `CLGeocoder` for reverse geocoding
-        static let live = Self(
-            updates: {
-                logger.debug("updates called")
-                return AsyncThrowingStream { continuation in
-                    let task = Task {
-                        do {
-                            for try await update in CLLocationUpdate.liveUpdates() {
-                                if Task.isCancelled {
-                                    logger.debug("Task was cancelled, aborting location stream")
-                                    break
+        static func live() -> Self {
+            Self(
+                updates: { liveConfiguration in
+                    logger.debug("updates called")
+                    return AsyncThrowingStream { continuation in
+                        let task = Task {
+                            do {
+                                for try await update in CLLocationUpdate.liveUpdates(liveConfiguration) {
+                                    if Task.isCancelled {
+                                        logger.debug("Task was cancelled, aborting location stream")
+                                        break
+                                    }
+                                    continuation.yield(update)
                                 }
-                                continuation.yield(update)
-                            }
-                            continuation.finish()
-                        } catch {
-                            if error is CancellationError {
-                                logger.debug("Location stream cancelled")
                                 continuation.finish()
-                            } else {
-                                logger.error("Location stream error: \(error)")
-                                continuation.finish(throwing: error)
+                            } catch {
+                                if error is CancellationError {
+                                    logger.debug("Location stream cancelled")
+                                    continuation.finish()
+                                } else {
+                                    logger.error("Location stream error: \(error)")
+                                    continuation.finish(throwing: error)
+                                }
                             }
                         }
-                    }
-                    continuation.onTermination = { @Sendable termination in
-                        switch termination {
-                        case .finished:
-                            logger.debug("Task was terminated due to being finished, cancelling location stream")
-                        case .cancelled:
-                            logger.debug("Task was terminated due to being cancelled, cancelling location stream")
-                        @unknown default:
-                            logger.warning("Task was cancelled with an unknown termination reason")
+                        continuation.onTermination = { @Sendable termination in
+                            switch termination {
+                            case .finished:
+                                logger.debug("Task was terminated due to being finished, cancelling location stream")
+                            case .cancelled:
+                                logger.debug("Task was terminated due to being cancelled, cancelling location stream")
+                            @unknown default:
+                                logger.warning("Task was cancelled with an unknown termination reason")
+                            }
+                            task.cancel()
                         }
-                        task.cancel()
                     }
-                }
-            },
-            reverseGeocodeLocation: { firstLiveUpdate in
-                try await CLGeocoder()
-                    .reverseGeocodeLocation(firstLiveUpdate)
-                    .first(where: { $0.placemarkName != nil })?.placemarkName
-            })
+                },
+                reverseGeocodeLocation: { firstLiveUpdate in
+                    try await CLGeocoder()
+                        .reverseGeocodeLocation(firstLiveUpdate)
+                        .first(where: { $0.placemarkName != nil })?.placemarkName
+                })
+        }
     }
 }
 
@@ -108,7 +111,7 @@ extension LocationProvider {
             reverseGeocodeLocation: Result<String?, Error>) -> Self
         {
             Self(
-                updates: {
+                updates: { _ in
                     AsyncThrowingStream { continuation in
                         Task {
                             for update in updates {

@@ -70,7 +70,7 @@ let configuration = LocationProvider.Configuration(
 let provider = LocationProvider(configuration: configuration)
 ```
 
-The defaults (`30s` timeout, `25s` grace) work well for foreground usage. Increase the values if your app can tolerate longer waits for a high-quality fix; decrease them for faster failure modes (for example, a Weather app that can fall back to cached data).
+The defaults (`10s` timeout, `5s` grace) work well for foreground usage. Increase the values if your app can tolerate longer waits for a high-quality fix; decrease them for faster failure modes (for example, a Weather app that can fall back to cached data).
 
 ### Handling Permissions
 
