@@ -19,18 +19,15 @@ struct LocationInfoView: View {
             VStack(alignment: .leading, spacing: 8) {
                 LineView(
                     title: "Name",
-                    line: location.name
-                )
+                    line: location.name)
 
                 LineView(
                     title: "Latitude:",
-                    line: String(format: "%.6f", location.location.coordinate.latitude)
-                )
+                    line: String(format: "%.6f", location.location.coordinate.latitude))
 
                 LineView(
                     title: "Longitude:",
-                    line: String(format: "%.6f", location.location.coordinate.longitude)
-                )
+                    line: String(format: "%.6f", location.location.coordinate.longitude))
             }
             .padding()
             .background(Color.gray.opacity(0.1))

@@ -13,8 +13,7 @@ let package = Package(
         // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
             name: "LocationProvider",
-            targets: ["LocationProvider"]
-        ),
+            targets: ["LocationProvider"]),
     ],
     dependencies: [
         .package(url: "https://github.com/kraigspear/Spearfoundation", branch: "main"),
@@ -26,14 +25,11 @@ let package = Package(
             name: "LocationProvider",
             dependencies: [
                 .product(name: "SpearFoundation", package: "SpearFoundation"),
-            ]
-        ),
+            ]),
         .testTarget(
             name: "LocationProviderTests",
-            dependencies: ["LocationProvider"]
-        ),
-    ]
-)
+            dependencies: ["LocationProvider"]),
+    ])
 
 // Enable Approachable Concurrency for all targets
 for target in package.targets {

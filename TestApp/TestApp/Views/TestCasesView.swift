@@ -25,8 +25,7 @@ struct TestCasesView: View {
                 "2. Tap the 'Find Location' button",
                 "3. When prompted, tap 'Allow' for location permissions",
             ],
-            expectedOutcome: "App should successfully retrieve and display the current location"
-        ),
+            expectedOutcome: "App should successfully retrieve and display the current location"),
         TestCase(
             title: "Denied Permission Path",
             steps: [
@@ -34,8 +33,7 @@ struct TestCasesView: View {
                 "2. Tap the 'Find Location' button",
                 "3. When prompted, tap 'Don't Allow' for location permissions",
             ],
-            expectedOutcome: "App should display an error message and provide instructions to enable permissions in Settings"
-        ),
+            expectedOutcome: "App should display an error message and provide instructions to enable permissions in Settings"),
         TestCase(
             title: "Locations services turned off",
             steps: [
@@ -43,8 +41,7 @@ struct TestCasesView: View {
                 "2. Launch App",
                 "3. Tap find location button",
             ],
-            expectedOutcome: "Error message indicating to turn on location permissions"
-        ),
+            expectedOutcome: "Error message indicating to turn on location permissions"),
         TestCase(
             title: "Airplane Mode",
             steps: [
@@ -52,8 +49,7 @@ struct TestCasesView: View {
                 "2. Launch App",
                 "3. Tap find location button",
             ],
-            expectedOutcome: "Error message indicating no network, airplane mode."
-        ),
+            expectedOutcome: "Error message indicating no network, airplane mode."),
     ]
 
     var body: some View {

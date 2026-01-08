@@ -100,8 +100,8 @@ struct MockLocationUpdate: LocationUpdate {
         insufficientlyInUse: Bool = false,
         locationUnavailable: Bool = false,
         serviceSessionRequired: Bool = false,
-        stationary: Bool = false
-    ) {
+        stationary: Bool = false)
+    {
         mockLocation = location
         mockAccuracyLimited = accuracyLimited
         mockAuthRequestInProgress = authorizationRequestInProgress
@@ -122,53 +122,46 @@ extension MockLocationUpdate {
     static func denied() -> Self {
         Self(
             authorizationDenied: true,
-            locationUnavailable: true
-        )
+            locationUnavailable: true)
     }
 
     /// Creates a mock representing a globally denied authorization state.
     static func deniedGlobally() -> Self {
         Self(
             authorizationDeniedGlobally: true,
-            locationUnavailable: true
-        )
+            locationUnavailable: true)
     }
 
     /// Creates a mock representing a restricted authorization state.
     static func restricted() -> Self {
         Self(
             authorizationRestricted: true,
-            locationUnavailable: true
-        )
+            locationUnavailable: true)
     }
 
     /// Creates a mock representing an in-progress authorization request state.
     static func requestInProgress() -> Self {
         Self(
             authorizationRequestInProgress: true,
-            locationUnavailable: true
-        )
+            locationUnavailable: true)
     }
 
     /// Creates a mock representing an insufficiently in-use state.
     static func insufficientlyInUse() -> Self {
         Self(
             insufficientlyInUse: true,
-            locationUnavailable: true
-        )
+            locationUnavailable: true)
     }
 
     /// Creates a mock representing a state requiring service session.
     static func serviceSessionRequired() -> Self {
         Self(
-            serviceSessionRequired: true
-        )
+            serviceSessionRequired: true)
     }
 
     /// Creates a mock representing a state where location is not available.
     static func locationNotAvailable() -> Self {
         Self(
-            locationUnavailable: true
-        )
+            locationUnavailable: true)
     }
 }

@@ -13,8 +13,7 @@ struct LocationProviderTest {
         let locationUpdate = MockLocationUpdate(location: expectedLocation)
         let client = LocationProvider.Client.test(
             updates: [askForPermissions, locationUpdate],
-            reverseGeocodeLocation: .success("KraigTown")
-        )
+            reverseGeocodeLocation: .success("KraigTown"))
         let locationProvider = LocationProvider(client: client)
         let gPSLocation = try await locationProvider.gpsLocation()
 
@@ -28,8 +27,7 @@ struct LocationProviderTest {
         let locationUpdate = MockLocationUpdate(location: expectedLocation)
         let client = LocationProvider.Client.test(
             updates: [locationUpdate],
-            reverseGeocodeLocation: .success("KraigTown")
-        )
+            reverseGeocodeLocation: .success("KraigTown"))
         let locationProvider = LocationProvider(client: client)
         let gPSLocation = try await locationProvider.gpsLocation()
 
@@ -47,8 +45,7 @@ struct LocationProviderTest {
 
         let client = LocationProvider.Client.test(
             updates: [firstUpdate, secondUpdate],
-            reverseGeocodeLocation: .success("KraigTown")
-        )
+            reverseGeocodeLocation: .success("KraigTown"))
 
         let locationProvider = LocationProvider(client: client)
         let gPSLocation = try await locationProvider.gpsLocation()
@@ -68,8 +65,7 @@ struct LocationProviderTest {
                 MockLocationUpdate.locationNotAvailable(),
                 locationUpdate,
             ],
-            reverseGeocodeLocation: .success("KraigTown")
-        )
+            reverseGeocodeLocation: .success("KraigTown"))
 
         let locationProvider = LocationProvider(client: client)
         let gPSLocation = try await locationProvider.gpsLocation()
@@ -84,8 +80,7 @@ struct LocationProviderTest {
         let locationUpdate = MockLocationUpdate(location: expectedLocation)
         let client = LocationProvider.Client.test(
             updates: [locationUpdate],
-            reverseGeocodeLocation: .failure(NSError(domain: "Geocoding", code: -1))
-        )
+            reverseGeocodeLocation: .failure(NSError(domain: "Geocoding", code: -1)))
         let locationProvider = LocationProvider(client: client)
         let gPSLocation = try await locationProvider.gpsLocation()
 
@@ -107,8 +102,7 @@ struct LocationProviderTest {
 
         let client = LocationProvider.Client(
             updates: { updateStream },
-            reverseGeocodeLocation: { _ in "KraigTown" }
-        )
+            reverseGeocodeLocation: { _ in "KraigTown" })
 
         let locationProvider = LocationProvider(client: client)
         let clock = ContinuousClock()
@@ -130,8 +124,7 @@ struct LocationProviderTest {
 
         let client = LocationProvider.Client(
             updates: { updateStream },
-            reverseGeocodeLocation: { _ in nil }
-        )
+            reverseGeocodeLocation: { _ in nil })
 
         let locationProvider = LocationProvider(client: client)
 
@@ -147,13 +140,11 @@ struct LocationProviderTest {
             let expectedLocation = CLLocation(latitude: 1, longitude: 1)
             let limitedUpdate = MockLocationUpdate(
                 location: expectedLocation,
-                accuracyLimited: true
-            )
+                accuracyLimited: true)
 
             let client = LocationProvider.Client.test(
                 updates: [limitedUpdate],
-                reverseGeocodeLocation: .success(nil)
-            )
+                reverseGeocodeLocation: .success(nil))
 
             let locationProvider = LocationProvider(client: client)
             let gpsLocation = try await locationProvider.gpsLocation(accuracyRequirement: .any)
@@ -165,8 +156,7 @@ struct LocationProviderTest {
         func reducedAccuracyRejectedWhenPreciseRequired() async throws {
             let limitedUpdate = MockLocationUpdate(
                 location: CLLocation(latitude: 1, longitude: 1),
-                accuracyLimited: true
-            )
+                accuracyLimited: true)
 
             let updateStream = AsyncThrowingStream<LocationUpdate, Error> { continuation in
                 continuation.yield(limitedUpdate)
@@ -175,8 +165,7 @@ struct LocationProviderTest {
 
             let client = LocationProvider.Client(
                 updates: { updateStream },
-                reverseGeocodeLocation: { _ in nil }
-            )
+                reverseGeocodeLocation: { _ in nil })
 
             let locationProvider = LocationProvider(client: client)
 
@@ -197,8 +186,7 @@ struct LocationProviderTest {
 
             let client = LocationProvider.Client(
                 updates: { updateStream },
-                reverseGeocodeLocation: { _ in nil }
-            )
+                reverseGeocodeLocation: { _ in nil })
 
             let locationProvider = LocationProvider(client: client)
 
@@ -226,13 +214,11 @@ struct LocationProviderTest {
 
             let client = LocationProvider.Client(
                 updates: { updateStream },
-                reverseGeocodeLocation: { _ in nil }
-            )
+                reverseGeocodeLocation: { _ in nil })
 
             let configuration = LocationProvider.Configuration(
                 locationAcquisitionTimeout: .seconds(0),
-                locationUnavailableGracePeriod: .seconds(0)
-            )
+                locationUnavailableGracePeriod: .seconds(0))
 
             let provider = LocationProvider(client: client, configuration: configuration)
 
@@ -249,8 +235,7 @@ struct LocationProviderTest {
             let locationUpdate = MockLocationUpdate.denied()
             let client = LocationProvider.Client.test(
                 updates: [locationUpdate],
-                reverseGeocodeLocation: .success("KraigTown")
-            )
+                reverseGeocodeLocation: .success("KraigTown"))
             let locationProvider = LocationProvider(client: client)
 
             await #expect(throws: GPSLocationError.authorizationDenied) {
@@ -263,8 +248,7 @@ struct LocationProviderTest {
             let locationUpdate = MockLocationUpdate.restricted()
             let client = LocationProvider.Client.test(
                 updates: [locationUpdate],
-                reverseGeocodeLocation: .success("KraigTown")
-            )
+                reverseGeocodeLocation: .success("KraigTown"))
             let locationProvider = LocationProvider(client: client)
 
             await #expect(throws: GPSLocationError.authorizationRestricted) {
@@ -277,8 +261,7 @@ struct LocationProviderTest {
             let locationUpdate = MockLocationUpdate.deniedGlobally()
             let client = LocationProvider.Client.test(
                 updates: [locationUpdate],
-                reverseGeocodeLocation: .success("KraigTown")
-            )
+                reverseGeocodeLocation: .success("KraigTown"))
             let locationProvider = LocationProvider(client: client)
 
             await #expect(throws: GPSLocationError.authorizationDeniedGlobally) {
@@ -291,8 +274,7 @@ struct LocationProviderTest {
             let locationUpdate = MockLocationUpdate.insufficientlyInUse()
             let client = LocationProvider.Client.test(
                 updates: [locationUpdate],
-                reverseGeocodeLocation: .success("KraigTown")
-            )
+                reverseGeocodeLocation: .success("KraigTown"))
             let locationProvider = LocationProvider(client: client)
 
             await #expect(throws: GPSLocationError.insufficientlyInUse) {
@@ -305,8 +287,7 @@ struct LocationProviderTest {
             let locationUpdate = MockLocationUpdate.serviceSessionRequired()
             let client = LocationProvider.Client.test(
                 updates: [locationUpdate],
-                reverseGeocodeLocation: .success("KraigTown")
-            )
+                reverseGeocodeLocation: .success("KraigTown"))
             let locationProvider = LocationProvider(client: client)
 
             await #expect(throws: GPSLocationError.serviceSessionRequired) {
