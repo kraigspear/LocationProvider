@@ -14,7 +14,16 @@
       "Bash(git -C /Users/kraigspear/Projects/LocationProvider check-ignore .swift-version .swiftformat)",
       "Bash(git rm:*)",
       "Bash(git rebase:*)",
-      "Bash(periphery scan:*)"
+      "Bash(periphery scan:*)",
+      "Bash(git branch:*)",
+      "Bash(gh pr create:*)",
+      "Bash(git checkout:*)",
+      "Bash(swift build:*)",
+      "WebSearch",
+      "Skill(swift)",
+      "Skill(swiftui)",
+      "Skill(complexity-review)",
+      "Bash(xargs:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,6 +1,6 @@
 
 
-import CoreLocation
+@preconcurrency import CoreLocation
 import Foundation
 import os
 
@@ -46,7 +46,7 @@ public final class LocationProvider {
     /// Creates a new instance of LocationProvider with the live client
     /// - Parameter configuration: Timing parameters that control acquisition timeouts and grace periods.
     public init(configuration: Configuration = .default) {
-        client = .live
+        client = .live()
         self.configuration = configuration
     }
 
@@ -122,7 +122,7 @@ public final class LocationProvider {
         var lastTransientError: GPSLocationError?
 
         do {
-            for try await update in client.updates() {
+            for try await update in client.updates(configuration.liveConfiguration) {
                 let now = clock.now
                 logger.debug("Received location update: \(String(describing: update))")
 
@@ -231,13 +231,18 @@ public extension LocationProvider {
         public var locationAcquisitionTimeout: Duration
         /// The grace period to tolerate `.locationUnavailable` before treating it as an error.
         public var locationUnavailableGracePeriod: Duration
+        /// The live update configuration preset for CoreLocation.
+        /// Use `.default` for general purposes, `.fitness` for workout tracking, etc.
+        public var liveConfiguration: CLLocationUpdate.LiveConfiguration
 
         public init(
-            locationAcquisitionTimeout: Duration = .seconds(30),
-            locationUnavailableGracePeriod: Duration = .seconds(25))
+            locationAcquisitionTimeout: Duration = .seconds(10),
+            locationUnavailableGracePeriod: Duration = .seconds(5),
+            liveConfiguration: CLLocationUpdate.LiveConfiguration = .default)
         {
             self.locationAcquisitionTimeout = locationAcquisitionTimeout
             self.locationUnavailableGracePeriod = locationUnavailableGracePeriod
+            self.liveConfiguration = liveConfiguration
         }
 
         public static let `default` = Configuration()
