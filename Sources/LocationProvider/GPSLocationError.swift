@@ -29,19 +29,12 @@ public enum GPSLocationError: LocalizedError {
     /// errors to suggest "wait and retry" rather than "change settings."
     case notFound
 
-    /// User has explicitly denied location permissions for this app
+    /// User has denied location permissions or location services are disabled
     ///
-    /// Why this exists: The most common authorization failure. Requires user to explicitly
-    /// enable location for this specific app in Settings. Distinguished from global denial
-    /// to provide precise Settings navigation path in error message.
+    /// Why this exists: The most common authorization failure. Requires user to enable
+    /// location services in Settings. When users open Settings, the UI immediately shows
+    /// whether location is disabled system-wide or just for this app.
     case authorizationDenied
-
-    /// Location services are disabled system-wide in device settings
-    ///
-    /// Why this exists: When Location Services are off for ALL apps, users need different
-    /// guidance than app-specific denial. This case ensures error messages direct users to
-    /// the correct Settings path (system-level toggle vs app-specific permissions).
-    case authorizationDeniedGlobally
 
     /// Current authorization level is not sufficient for the required location features
     ///
@@ -84,28 +77,18 @@ public enum GPSLocationError: LocalizedError {
     /// guidance when multiple error conditions are true.
     ///
     /// Priority ordering rationale:
-    /// 1. Global denial checked first because when Location Services are disabled system-wide,
-    ///    Core Location reports authorizationStatus == .denied AND locationServicesEnabled() == false,
-    ///    causing BOTH authorizationDenied and authorizationDeniedGlobally flags to be true.
-    ///    Checking global first ensures we direct users to the correct Settings path (system toggle
-    ///    vs app-specific permissions).
-    /// 2. Other authorization issues (restricted, denied, insufficient) follow since they require
+    /// 1. Authorization issues (restricted, denied, insufficient) checked first since they require
     ///    explicit user action.
-    /// 3. Transient system issues (unavailable, session required) checked last since they may
+    /// 2. Transient system issues (unavailable, session required) checked last since they may
     ///    resolve without user intervention.
     ///
     /// - Parameter update: The location update containing state information
     /// - Returns: A GPSLocationError if any error condition is detected, nil if the update is valid
     init?(locationUpdate update: LocationUpdate) {
-        // Check global denial FIRST - when Location Services are off system-wide, both
-        // authorizationDenied and authorizationDeniedGlobally are true. We must prioritize
-        // the global case to direct users to the system-level toggle, not app settings.
-        if update.authorizationDeniedGlobally {
-            self = .authorizationDeniedGlobally
+        if update.authorizationDeniedGlobally || update.authorizationDenied {
+            self = .authorizationDenied
         } else if update.authorizationRestricted {
             self = .authorizationRestricted
-        } else if update.authorizationDenied {
-            self = .authorizationDenied
         } else if update.insufficientlyInUse {
             self = .insufficientlyInUse
             // Then check transient system issues
@@ -122,9 +105,7 @@ public enum GPSLocationError: LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .authorizationDenied:
-            "Location access is disabled for this app. You can enable it in Settings > Privacy > Location Services."
-        case .authorizationDeniedGlobally:
-            "Location Services are turned off. Please enable them in Settings > Privacy > Location Services."
+            "Location access is not available. Enable location in Settings > Privacy & Security > Location Services."
         case .authorizationRestricted:
             "Location access is restricted by device management settings. Please contact your device administrator."
         case .insufficientlyInUse:
@@ -174,13 +155,7 @@ extension GPSLocationError {
 
         switch clError.code {
         case .denied:
-            // Critical distinction: Check if location services are disabled system-wide
-            // vs just for this app. This provides users with the correct Settings path.
-            if !CLLocationManager.locationServicesEnabled() {
-                self = .authorizationDeniedGlobally
-            } else {
-                self = .authorizationDenied
-            }
+            self = .authorizationDenied
         case .promptDeclined:
             // User dismissed the "Precise Location" prompt without granting precise accuracy.
             // This occurs when the app requests precise location but the user has approximate

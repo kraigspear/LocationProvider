@@ -106,13 +106,13 @@ func testPermissionDenied() async {
 }
 ```
 
-### Globally Denied Permissions
+### Globally Denied Maps to Authorization Denied
 
 ```swift
-@Test("Location services globally disabled with specific guidance")
+@Test("Location services globally disabled maps to authorizationDenied")
 func testGloballyDeniedPermissions() async {
     let client = LocationProvider.Client.test(
-        updates: [MockLocationUpdate.deniedGlobally()],
+        updates: [MockLocationUpdate(authorizationDeniedGlobally: true, locationUnavailable: true)],
         reverseGeocodeLocation: .success("Test")
     )
     let provider = LocationProvider(client: client)
@@ -121,10 +121,8 @@ func testGloballyDeniedPermissions() async {
         _ = try await provider.gpsLocation()
         #expect(Bool(false), "Should have thrown an error")
     } catch let error as GPSLocationError {
-        #expect(error == .authorizationDeniedGlobally)
-        // Verify the error distinguishes between app-level and system-level issues
-        #expect(error.localizedDescription.contains("Location Services are turned off"))
-        #expect(error.localizedDescription.contains("Settings > Privacy"))
+        // Global denial maps to authorizationDenied - Settings UI shows the difference
+        #expect(error == .authorizationDenied)
     }
 }
 ```
@@ -202,15 +200,14 @@ func testCLErrorMapping() async {
     // to test CLError mapping, as the test client doesn't simulate CLErrors
 
     // In a real scenario, you'd test:
-    // - CLError.denied → GPSLocationError.authorizationDenied when location services enabled
-    // - CLError.denied → GPSLocationError.authorizationDeniedGlobally when location services disabled
+    // - CLError.denied → GPSLocationError.authorizationDenied
     // - CLError.locationUnknown → GPSLocationError.locationUnavailable
     // - CLError.network → GPSLocationError.locationUnavailable
 
     // This demonstrates the error mapping logic without requiring real CLError injection
     let deniedError = GPSLocationError(locationStreamError: CLError(.denied))
     #expect(deniedError != nil)
-    #expect(deniedError == .authorizationDenied || deniedError == .authorizationDeniedGlobally)
+    #expect(deniedError == .authorizationDenied)
 }
 ```
 
@@ -299,7 +296,6 @@ Test that error messages are user-friendly and actionable:
 func testErrorMessageQuality() {
     let errors: [GPSLocationError] = [
         .authorizationDenied,
-        .authorizationDeniedGlobally,
         .authorizationRestricted,
         .locationUnavailable,
         .notFound
@@ -318,13 +314,6 @@ func testErrorMessageQuality() {
         // Authorization errors should mention Settings
         if case .authorizationDenied = error {
             #expect(message.contains("Settings"))
-            #expect(message.contains("Privacy"))
-            #expect(message.contains("Location Services"))
-        }
-
-        if case .authorizationDeniedGlobally = error {
-            #expect(message.contains("Settings"))
-            #expect(message.contains("Privacy"))
             #expect(message.contains("Location Services"))
         }
 
@@ -576,7 +565,6 @@ func testImprovedErrorHandling() async {
 
     let scenarios: [(MockLocationUpdate, GPSLocationError, String)] = [
         (.denied(), .authorizationDenied, "Settings"),
-        (.deniedGlobally(), .authorizationDeniedGlobally, "Location Services are turned off"),
         (.locationNotAvailable(), .locationUnavailable, "temporarily unavailable")
     ]
 
@@ -624,8 +612,6 @@ extension LocationProvider {
         switch error {
         case .authorizationDenied:
             mockUpdate = .denied()
-        case .authorizationDeniedGlobally:
-            mockUpdate = .deniedGlobally()
         case .authorizationRestricted:
             mockUpdate = .restricted()
         case .locationUnavailable:
@@ -655,9 +641,7 @@ extension LocationProvider {
         // Specific validation by error type
         switch error {
         case .authorizationDenied:
-            return message.contains("Settings") && message.contains("Privacy")
-        case .authorizationDeniedGlobally:
-            return message.contains("Location Services are turned off")
+            return message.contains("Settings") && message.contains("Location Services")
         case .locationUnavailable:
             return message.contains("temporarily") || message.contains("GPS")
         default:
@@ -716,7 +700,6 @@ func testSimulatorLocation() async throws {
 
         // Common expected errors in test environments
         #expect(error == .authorizationDenied ||
-               error == .authorizationDeniedGlobally ||
                error == .locationUnavailable)
     } catch {
         throw error

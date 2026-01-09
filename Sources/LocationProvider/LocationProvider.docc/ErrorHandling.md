@@ -34,8 +34,7 @@ LocationProvider defines specific error cases that cover all possible location s
 public enum GPSLocationError: LocalizedError {
     case authorizationRestricted    // Parental controls/device management
     case notFound                  // Cannot determine position
-    case authorizationDenied       // User denied app permission
-    case authorizationDeniedGlobally // Location Services disabled
+    case authorizationDenied       // Location access denied (app or system-wide)
     case insufficientlyInUse       // Need "Always" but have "When In Use"
     case locationUnavailable       // GPS temporarily unavailable
     case serviceSessionRequired    // Find My session needed
@@ -118,8 +117,6 @@ func handleLocationError(_ error: GPSLocationError) {
     switch error {
     case .authorizationDenied:
         showPermissionRequiredAlert()
-    case .authorizationDeniedGlobally:
-        showLocationServicesDisabledAlert()
     case .locationUnavailable:
         showLocationUnavailableMessage()
     case .notFound:
@@ -134,7 +131,7 @@ func handleLocationError(_ error: GPSLocationError) {
 
 ### Authorization Denied
 
-User has specifically denied location access for your app. LocationProvider now detects this immediately and provides clear guidance:
+User has denied location access for your app, or Location Services are disabled system-wide. LocationProvider detects this immediately and provides clear guidance:
 
 > **Key Improvement**: Previously, authorization failures appeared as generic "location not found" errors. Now they surface immediately with specific instructions.
 
@@ -144,7 +141,7 @@ func handleAuthorizationDenied() {
     let alert = UIAlertController(
         title: "Location Permission Required",
         message: GPSLocationError.authorizationDenied.localizedDescription,
-        // Will be: "Location access is disabled for this app. You can enable it in Settings > Privacy > Location Services."
+        // Will be: "Location access is not available. Enable location in Settings > Privacy & Security > Location Services."
         preferredStyle: .alert
     )
 
@@ -155,25 +152,6 @@ func handleAuthorizationDenied() {
     })
 
     alert.addAction(UIAlertAction(title: "Not Now", style: .cancel))
-    present(alert, animated: true)
-}
-```
-
-### Authorization Denied Globally
-
-Location Services are turned off system-wide. LocationProvider automatically distinguishes between app-specific and system-wide permission issues:
-
-```swift
-func handleGlobalLocationServicesDisabled() {
-    // LocationProvider automatically detects system-wide vs app-specific denial
-    let alert = UIAlertController(
-        title: "Location Services Disabled",
-        message: GPSLocationError.authorizationDeniedGlobally.localizedDescription,
-        // Will be: "Location Services are turned off. Please enable them in Settings > Privacy > Location Services."
-        preferredStyle: .alert
-    )
-
-    alert.addAction(UIAlertAction(title: "OK", style: .default))
     present(alert, animated: true)
 }
 ```
@@ -339,8 +317,6 @@ struct LocationErrorHandlingView: View {
         switch error {
         case .authorizationDenied:
             return .permissionDenied
-        case .authorizationDeniedGlobally:
-            return .servicesDisabled
         case .locationUnavailable:
             return .locationUnavailable
         case .notFound:
@@ -449,7 +425,7 @@ class RobustLocationManager {
                 isLoading = false
             }
 
-        case .authorizationDenied, .authorizationDeniedGlobally, .authorizationRestricted:
+        case .authorizationDenied, .authorizationRestricted:
             // Don't retry permission errors
             error = locationError
             isLoading = false

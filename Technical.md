@@ -48,7 +48,6 @@ classDiagram
         +authorizationRestricted
         +notFound
         +authorizationDenied
-        +authorizationDeniedGlobally
         +insufficientlyInUse
         +locationUnavailable
         +serviceSessionRequired
@@ -141,7 +140,6 @@ flowchart TD
     A[Start Location Request] --> B{Check Authorization}
     B -->|Restricted| C[Throw authorizationRestricted]
     B -->|Denied| D[Throw authorizationDenied]
-    B -->|Denied Globally| E[Throw authorizationDeniedGlobally]
     B -->|Insufficient| F[Throw insufficientlyInUse]
     B -->|Authorized| G{Start Updates}
     

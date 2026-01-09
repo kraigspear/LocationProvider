@@ -6,6 +6,7 @@
 //
 
 @preconcurrency import CoreLocation
+@preconcurrency import MapKit
 import os.log
 
 private let logger = Logger(subsystem: "com.spearware.locationprovider", category: "Client")
@@ -27,7 +28,7 @@ extension LocationProvider {
         ///
         /// - Throws: The stream may throw the following errors:
         ///   - `CLError`: Core Location errors including:
-        ///     - `.denied`: User denied location permissions (mapped to `GPSLocationError.authorizationDenied` or `.authorizationDeniedGlobally`)
+        ///     - `.denied`: User denied location permissions (mapped to `GPSLocationError.authorizationDenied`)
         ///     - `.locationUnknown`: Unable to determine location (mapped to `GPSLocationError.locationUnavailable`)
         ///     - `.network`: Network-related failure (mapped to `GPSLocationError.locationUnavailable`)
         ///   - `CancellationError`: When the stream is cancelled (filtered out, not surfaced to users)
@@ -45,11 +46,11 @@ extension LocationProvider {
         /// - Throws: An error if the geocoding request fails
         var reverseGeocodeLocation: (CLLocation) async throws -> String?
 
-        /// Live implementation using CoreLocation services.
+        /// Live implementation using CoreLocation and MapKit services.
         ///
         /// This implementation:
         /// - Uses `CLLocationUpdate.liveUpdates()` for real-time location data
-        /// - Employs `CLGeocoder` for reverse geocoding
+        /// - Employs `MKReverseGeocodingRequest` for reverse geocoding
         static func live() -> Self {
             Self(
                 updates: { liveConfiguration in
@@ -88,10 +89,12 @@ extension LocationProvider {
                         }
                     }
                 },
-                reverseGeocodeLocation: { firstLiveUpdate in
-                    try await CLGeocoder()
-                        .reverseGeocodeLocation(firstLiveUpdate)
-                        .first(where: { $0.placemarkName != nil })?.placemarkName
+                reverseGeocodeLocation: { location in
+                    guard let request = MKReverseGeocodingRequest(location: location) else {
+                        return nil
+                    }
+                    let mapItems = try await request.mapItems
+                    return mapItems.first?.addressRepresentations?.cityName
                 })
         }
     }

@@ -87,8 +87,7 @@ The framework automatically handles location permission requests and provides cl
 
 The framework provides detailed error cases through `GPSLocationError`:
 
-- `authorizationDenied`: User denied location access for the app
-- `authorizationDeniedGlobally`: Location services are disabled system-wide
+- `authorizationDenied`: Location access is not available (app denied or system-wide disabled)
 - `authorizationRestricted`: Location access is restricted by parental controls
 - `insufficientlyInUse`: Current authorization level is insufficient
 - `notFound`: Unable to determine location
@@ -105,9 +104,6 @@ do {
 } catch GPSLocationError.authorizationDenied {
     // Guide user to Settings > Privacy & Security > Location Services
     showLocationPermissionAlert()
-} catch GPSLocationError.authorizationDeniedGlobally {
-    // Guide user to enable Location Services system-wide
-    showSystemLocationServicesAlert()
 } catch GPSLocationError.locationUnavailable {
     // Handle airplane mode, poor GPS signal, etc.
     showLocationUnavailableAlert()
