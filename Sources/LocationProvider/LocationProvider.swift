@@ -260,13 +260,3 @@ private extension LocationProvider.AccuracyRequirement {
         }
     }
 }
-
-extension CLPlacemark {
-    /// Returns the locality (city) name from the placemark if available.
-    ///
-    /// - Returns: A string containing the locality name, or nil if not available
-    var placemarkName: String? {
-        guard let locality else { return nil }
-        return "\(locality)"
-    }
-}
