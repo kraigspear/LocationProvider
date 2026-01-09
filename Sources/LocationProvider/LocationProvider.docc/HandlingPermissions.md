@@ -56,11 +56,8 @@ let location = try await locationProvider.gpsLocation()
 do {
     let location = try await locationProvider.gpsLocation()
 } catch GPSLocationError.authorizationDenied {
-    // User denied location access for this app
+    // Location access denied (app-level or system-wide)
     showLocationPermissionAlert()
-} catch GPSLocationError.authorizationDeniedGlobally {
-    // Location Services disabled system-wide
-    showSystemLocationServicesAlert()
 } catch GPSLocationError.authorizationRestricted {
     // Location access restricted by parental controls
     showRestrictedAlert()
@@ -72,17 +69,17 @@ do {
 
 ## Handling Specific Permission Scenarios
 
-### App-Level Permission Denied
+### Location Permission Denied
 
-When users deny location access for your specific app:
+When users deny location access or Location Services are disabled:
 
 ```swift
 func handleAuthorizationDenied() {
-    // LocationProvider now provides the exact message to show users
+    // LocationProvider provides the exact message to show users
     let alert = UIAlertController(
         title: "Location Access Needed",
         message: GPSLocationError.authorizationDenied.localizedDescription,
-        // This will be: "Location access is disabled for this app. You can enable it in Settings > Privacy > Location Services."
+        // This will be: "Location access is not available. Enable location in Settings > Privacy & Security > Location Services."
         preferredStyle: .alert
     )
 
@@ -93,25 +90,6 @@ func handleAuthorizationDenied() {
     })
 
     alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-    present(alert, animated: true)
-}
-```
-
-### System-Wide Location Services Disabled
-
-When Location Services are turned off entirely:
-
-```swift
-func handleGloballyDenied() {
-    // LocationProvider automatically detects system-wide vs app-specific issues
-    let alert = UIAlertController(
-        title: "Location Services Disabled",
-        message: GPSLocationError.authorizationDeniedGlobally.localizedDescription,
-        // This will be: "Location Services are turned off. Please enable them in Settings > Privacy > Location Services."
-        preferredStyle: .alert
-    )
-
-    alert.addAction(UIAlertAction(title: "OK", style: .default))
     present(alert, animated: true)
 }
 ```
@@ -218,17 +196,14 @@ struct LocationPermissionView: View {
                     openAppSettings()
                 }
                 Button("Cancel", role: .cancel) {}
-            case .authorizationDeniedGlobally:
-                Button("OK") {}
             default:
                 Button("OK") {}
             }
         } message: {
             // LocationProvider provides clear, actionable error messages
             Text(permissionError?.localizedDescription ?? "")
-            // Examples:
-            // "Location access is disabled for this app. You can enable it in Settings > Privacy > Location Services."
-            // "Location Services are turned off. Please enable them in Settings > Privacy > Location Services."
+            // Example:
+            // "Location access is not available. Enable location in Settings > Privacy & Security > Location Services."
         }
     }
 
@@ -288,7 +263,7 @@ func showLocationError(_ error: GPSLocationError) {
 
     // Add appropriate actions based on error type
     switch error {
-    case .authorizationDenied, .authorizationDeniedGlobally:
+    case .authorizationDenied:
         alert.addAction(UIAlertAction(title: "Settings", style: .default) { _ in
             openAppSettings()
         })
@@ -423,7 +398,7 @@ class LocationManager {
         guard let error = lastError else { return false }
 
         switch error {
-        case .authorizationDenied, .authorizationDeniedGlobally:
+        case .authorizationDenied:
             return true // User might have changed settings
         case .locationUnavailable, .notFound:
             return true // Might be temporary

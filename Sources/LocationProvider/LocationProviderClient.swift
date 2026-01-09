@@ -28,7 +28,7 @@ extension LocationProvider {
         ///
         /// - Throws: The stream may throw the following errors:
         ///   - `CLError`: Core Location errors including:
-        ///     - `.denied`: User denied location permissions (mapped to `GPSLocationError.authorizationDenied` or `.authorizationDeniedGlobally`)
+        ///     - `.denied`: User denied location permissions (mapped to `GPSLocationError.authorizationDenied`)
         ///     - `.locationUnknown`: Unable to determine location (mapped to `GPSLocationError.locationUnavailable`)
         ///     - `.network`: Network-related failure (mapped to `GPSLocationError.locationUnavailable`)
         ///   - `CancellationError`: When the stream is cancelled (filtered out, not surfaced to users)

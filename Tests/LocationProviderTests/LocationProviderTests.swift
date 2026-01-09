@@ -281,15 +281,15 @@ struct LocationProviderTest {
             }
         }
 
-        @Test("Location services denied globally, Error thrown")
+        @Test("Location services denied globally maps to authorizationDenied")
         func globallyDenied() async throws {
-            let locationUpdate = MockLocationUpdate.deniedGlobally()
+            let locationUpdate = MockLocationUpdate(authorizationDeniedGlobally: true, locationUnavailable: true)
             let client = LocationProvider.Client.test(
                 updates: [locationUpdate],
                 reverseGeocodeLocation: .success("KraigTown"))
             let locationProvider = LocationProvider(client: client)
 
-            await #expect(throws: GPSLocationError.authorizationDeniedGlobally) {
+            await #expect(throws: GPSLocationError.authorizationDenied) {
                 _ = try await locationProvider.gpsLocation()
             }
         }

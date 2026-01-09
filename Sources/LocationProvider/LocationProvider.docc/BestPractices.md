@@ -573,8 +573,6 @@ extension GPSLocationError {
         switch self {
         case .authorizationDenied:
             return "Enable location access in Settings."
-        case .authorizationDeniedGlobally:
-            return "Turn on Location Services in Settings."
         case .locationUnavailable, .notFound:
             return "Make sure you have GPS signal and try again."
         default:

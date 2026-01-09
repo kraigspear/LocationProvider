@@ -125,13 +125,6 @@ extension MockLocationUpdate {
             locationUnavailable: true)
     }
 
-    /// Creates a mock representing a globally denied authorization state.
-    static func deniedGlobally() -> Self {
-        Self(
-            authorizationDeniedGlobally: true,
-            locationUnavailable: true)
-    }
-
     /// Creates a mock representing a restricted authorization state.
     static func restricted() -> Self {
         Self(
