@@ -117,87 +117,132 @@ public final class LocationProvider {
         logger.debug("Starting live update monitoring")
 
         let clock = ContinuousClock()
-        var acquisitionWindowStart = clock.now
-        var locationUnavailableStart: ContinuousClock.Instant?
-        var lastTransientError: GPSLocationError?
+        let state = AcquisitionState(start: clock.now)
+        let configuration = configuration
+        let updates = client.updates
 
-        do {
-            for try await update in client.updates(configuration.liveConfiguration) {
-                let now = clock.now
-                logger.debug("Received location update: \(String(describing: update))")
-
-                if update.authorizationRequestInProgress {
-                    logger.debug("Authorization request in progress; resetting timers")
-                    acquisitionWindowStart = now
-                    locationUnavailableStart = nil
-                    lastTransientError = nil
-                    continue
-                }
-
-                if let location = update.location {
-                    if update.accuracyLimited, !accuracyRequirement.acceptsReducedAccuracy {
-                        logger.debug("Limited accuracy location received but precise accuracy required; continuing")
-                        lastTransientError = .preciseLocationRequired
-                        continue
-                    }
-                    logger.debug("Valid location found: \(String(describing: location))")
-                    return location
-                }
-
-                if let error = GPSLocationError(locationUpdate: update) {
-                    switch error {
-                    case .locationUnavailable:
-                        lastTransientError = error
-
-                        if locationUnavailableStart == nil {
-                            locationUnavailableStart = now
-                            logger.debug("Location unavailable reported; starting grace period")
-                        } else if let start = locationUnavailableStart {
-                            let elapsed = start.duration(to: now)
-
-                            if elapsed >= configuration.locationUnavailableGracePeriod {
-                                logger.error("Location unavailable exceeded grace period (\(String(describing: elapsed))); throwing")
-                                throw error
-                            }
-
-                            logger.debug("Location unavailable within grace period (\(String(describing: elapsed))); awaiting recovery")
-                        }
-
-                    default:
-                        logger.error("Non-transient location error encountered: \(String(describing: error))")
-                        throw error
-                    }
-                } else {
-                    locationUnavailableStart = nil
-                }
-
-                let acquisitionElapsed = acquisitionWindowStart.duration(to: now)
-                if acquisitionElapsed >= configuration.locationAcquisitionTimeout {
-                    let timeoutError = lastTransientError ?? .notFound
-                    logger.error("Location acquisition timed out after \(String(describing: acquisitionElapsed)); throwing \(String(describing: timeoutError))")
-                    throw timeoutError
-                }
-            }
-        } catch {
-            // Critical error handling: The stream threw an error (likely CLError from liveUpdates).
-            // We MUST map these to specific GPSLocationError cases so users get actionable messages.
-            // Example: CLError.denied → GPSLocationError.authorizationDenied → "Location access is disabled..."
-            // Without this mapping, users would only see generic "Unable to determine location" errors
-            // and wouldn't know they need to fix permissions in Settings.
-            logger.error("Location updates stream failed with error: \(String(describing: error))")
-
-            // Map CLError and other known errors to our domain-specific errors
-            if let mappedError = GPSLocationError(locationStreamError: error) {
-                throw mappedError
-            }
-
-            // Fall back to the last transient error we saw (if any) or generic .notFound
-            // This preserves context when the stream ends unexpectedly
-            throw lastTransientError ?? .notFound
+        enum RaceOutcome {
+            case location(CLLocation)
+            case failure(Error)
         }
 
-        logger.error("Location updates stream ended without valid location")
-        throw lastTransientError ?? .notFound
+        let outcome = await withTaskGroup(of: RaceOutcome.self, returning: RaceOutcome.self) { group in
+            group.addTask {
+                do {
+                    for try await update in updates(configuration.liveConfiguration) {
+                        let now = clock.now
+                        logger.debug("Received location update: \(String(describing: update))")
+
+                        if update.authorizationRequestInProgress {
+                            logger.debug("Authorization request in progress; resetting timers")
+                            await state.resetForAuthorization(now: now)
+                            continue
+                        }
+
+                        if let location = update.location {
+                            if update.accuracyLimited, !accuracyRequirement.acceptsReducedAccuracy {
+                                logger.debug("Limited accuracy location received but precise accuracy required; continuing")
+                                await state.setLastTransientError(.preciseLocationRequired)
+                                continue
+                            }
+                            logger.debug("Valid location found: \(String(describing: location))")
+                            return .location(location)
+                        }
+
+                        if let error = GPSLocationError(locationUpdate: update) {
+                            switch error {
+                            case .locationUnavailable:
+                                await state.setLastTransientError(error)
+
+                                let elapsed = await state.markLocationUnavailable(now: now)
+                                if let elapsed {
+                                    if elapsed >= configuration.locationUnavailableGracePeriod {
+                                        logger.error("Location unavailable exceeded grace period (\(String(describing: elapsed))); throwing")
+                                        return .failure(error)
+                                    }
+
+                                    logger.debug("Location unavailable within grace period (\(String(describing: elapsed))); awaiting recovery")
+                                } else {
+                                    logger.debug("Location unavailable reported; starting grace period")
+                                }
+
+                            default:
+                                logger.error("Non-transient location error encountered: \(String(describing: error))")
+                                return .failure(error)
+                            }
+                        } else {
+                            await state.clearLocationUnavailable()
+                        }
+                    }
+                } catch {
+                    // Critical error handling: The stream threw an error (likely CLError from liveUpdates).
+                    // We MUST map these to specific GPSLocationError cases so users get actionable messages.
+                    // Example: CLError.denied → GPSLocationError.authorizationDenied → "Location access is disabled..."
+                    // Without this mapping, users would only see generic "Unable to determine location" errors
+                    // and wouldn't know they need to fix permissions in Settings.
+                    logger.error("Location updates stream failed with error: \(String(describing: error))")
+
+                    // Map CLError and other known errors to our domain-specific errors
+                    if let mappedError = GPSLocationError(locationStreamError: error) {
+                        return .failure(mappedError)
+                    }
+
+                    // Fall back to the last transient error we saw (if any) or generic .notFound
+                    // This preserves context when the stream ends unexpectedly
+                    return await .failure(state.currentTimeoutError())
+                }
+
+                logger.error("Location updates stream ended without valid location")
+                return await .failure(state.currentTimeoutError())
+            }
+
+            group.addTask {
+                do {
+                    var observedStart = await state.currentAcquisitionStart()
+
+                    while true {
+                        let deadline = observedStart.advanced(by: configuration.locationAcquisitionTimeout)
+                        try await clock.sleep(until: deadline, tolerance: .zero)
+
+                        let currentStart = await state.currentAcquisitionStart()
+                        if currentStart != observedStart {
+                            observedStart = currentStart
+                            continue
+                        }
+
+                        let timeoutError = await state.currentTimeoutError()
+                        let elapsed = observedStart.duration(to: clock.now)
+                        logger.error("Location acquisition timed out after \(String(describing: elapsed)); throwing \(String(describing: timeoutError))")
+                        return .failure(timeoutError)
+                    }
+                } catch {
+                    return .failure(error)
+                }
+            }
+
+            defer { group.cancelAll() }
+
+            while let result = await group.next() {
+                switch result {
+                case let .location(location):
+                    return .location(location)
+                case let .failure(error):
+                    if error is CancellationError {
+                        continue
+                    }
+                    return .failure(error)
+                }
+            }
+
+            return await .failure(state.currentTimeoutError())
+        }
+
+        switch outcome {
+        case let .location(location):
+            return location
+        case let .failure(error):
+            throw error
+        }
     }
 }
 
@@ -258,5 +303,45 @@ private extension LocationProvider.AccuracyRequirement {
         case .precise:
             false
         }
+    }
+}
+
+private actor AcquisitionState {
+    private var acquisitionWindowStart: ContinuousClock.Instant
+    private var locationUnavailableStart: ContinuousClock.Instant?
+    private var lastTransientError: GPSLocationError?
+
+    init(start: ContinuousClock.Instant) {
+        acquisitionWindowStart = start
+    }
+
+    func resetForAuthorization(now: ContinuousClock.Instant) {
+        acquisitionWindowStart = now
+        locationUnavailableStart = nil
+        lastTransientError = nil
+    }
+
+    func setLastTransientError(_ error: GPSLocationError?) {
+        lastTransientError = error
+    }
+
+    func markLocationUnavailable(now: ContinuousClock.Instant) -> Duration? {
+        if let start = locationUnavailableStart {
+            return start.duration(to: now)
+        }
+        locationUnavailableStart = now
+        return nil
+    }
+
+    func clearLocationUnavailable() {
+        locationUnavailableStart = nil
+    }
+
+    func currentAcquisitionStart() -> ContinuousClock.Instant {
+        acquisitionWindowStart
+    }
+
+    func currentTimeoutError() -> GPSLocationError {
+        lastTransientError ?? .notFound
     }
 }

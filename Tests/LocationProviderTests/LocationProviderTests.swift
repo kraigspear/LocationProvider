@@ -226,7 +226,10 @@ struct LocationProviderTest {
 
             _ = try await provider.gpsLocation()
         }
+    }
 
+    @MainActor
+    struct Timeouts {
         @Test("Custom acquisition timeout fails fast")
         func customTimeoutFailsFast() async throws {
             let updateStream = AsyncThrowingStream<LocationUpdate, Error> { continuation in
@@ -242,12 +245,36 @@ struct LocationProviderTest {
                 reverseGeocodeLocation: { _ in nil })
 
             let configuration = LocationProvider.Configuration(
-                locationAcquisitionTimeout: .seconds(0),
+                locationAcquisitionTimeout: .milliseconds(200),
                 locationUnavailableGracePeriod: .seconds(0))
 
             let provider = LocationProvider(client: client, configuration: configuration)
 
             await #expect(throws: GPSLocationError.locationUnavailable) {
+                _ = try await provider.gpsLocation()
+            }
+        }
+
+        @Test("Stream stall times out even without updates")
+        func streamStallTimesOutWithoutUpdates() async throws {
+            let updateStream = AsyncThrowingStream<LocationUpdate, Error> { continuation in
+                Task {
+                    try? await Task.sleep(for: .seconds(3600))
+                    continuation.finish()
+                }
+            }
+
+            let client = LocationProvider.Client(
+                updates: { _ in updateStream },
+                reverseGeocodeLocation: { _ in nil })
+
+            let configuration = LocationProvider.Configuration(
+                locationAcquisitionTimeout: .milliseconds(200),
+                locationUnavailableGracePeriod: .seconds(0))
+
+            let provider = LocationProvider(client: client, configuration: configuration)
+
+            await #expect(throws: GPSLocationError.notFound) {
                 _ = try await provider.gpsLocation()
             }
         }
