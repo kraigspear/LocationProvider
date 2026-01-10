@@ -13,7 +13,7 @@ import Foundation
 /// This enum abstracts Core Location's complex error model into actionable GPS-specific errors.
 /// Each case maps to specific user guidance in errorDescription, enabling apps to show
 /// contextual help without reimplementing Core Location error logic everywhere.
-public enum GPSLocationError: LocalizedError {
+public enum GPSLocationError: LocalizedError, Sendable {
     /// Location access is restricted by parental controls or device management
     ///
     /// Why this exists: Users with managed devices (MDM, Screen Time) may have location
