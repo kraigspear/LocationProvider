@@ -16,7 +16,7 @@ let package = Package(
             targets: ["LocationProvider"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/kraigspear/Spearfoundation", branch: "main"),
+        .package(url: "https://github.com/kraigspear/Spearfoundation", exact: "3.0.0"),
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
