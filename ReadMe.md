@@ -17,7 +17,7 @@ A modern Swift framework for handling GPS location services with async/await sup
 ## Requirements
 
 - iOS 18.0+ / macOS 15.0+
-- Swift 6.2+
+- Swift 6.4+
 - Xcode 16.0+
 - Strict Concurrency enabled
 

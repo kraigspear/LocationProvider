@@ -19,7 +19,7 @@ LocationProvider is a SwiftUI-ready framework that provides a clean, modern API 
 ### Requirements
 
 - iOS 18.0+ / macOS 15.0+
-- Swift 6.2+
+- Swift 6.4+
 - Xcode 16.0+
 - Strict Concurrency enabled
 
