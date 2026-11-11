@@ -19,15 +19,18 @@ struct LocationInfoView: View {
             VStack(alignment: .leading, spacing: 8) {
                 LineView(
                     title: "Name",
-                    line: location.name)
+                    line: location.name,
+                    identifier: "locationName")
 
                 LineView(
                     title: "Latitude:",
-                    line: String(format: "%.6f", location.location.coordinate.latitude))
+                    line: String(format: "%.6f", location.location.coordinate.latitude),
+                    identifier: "locationLatitude")
 
                 LineView(
                     title: "Longitude:",
-                    line: String(format: "%.6f", location.location.coordinate.longitude))
+                    line: String(format: "%.6f", location.location.coordinate.longitude),
+                    identifier: "locationLongitude")
             }
             .padding()
             .background(Color.gray.opacity(0.1))
@@ -38,12 +41,14 @@ struct LocationInfoView: View {
     struct LineView: View {
         let title: String
         let line: String
+        let identifier: String
         var body: some View {
             HStack {
                 Text(title)
                     .foregroundStyle(.secondary)
                 Text(line)
                     .bold()
+                    .accessibilityIdentifier(identifier)
             }
         }
     }
