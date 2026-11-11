@@ -11,8 +11,6 @@
     import AppKit
 #endif
 
-import SpearFoundation
-
 /// Opens location-specific system settings to help users manage location permissions.
 ///
 /// When location permission errors occur (e.g., `GPSLocationError.authorizationDenied`),
@@ -61,7 +59,12 @@ import SpearFoundation
 /// - **macOS**: Opens Security & Privacy → Location Services in System Settings
 public func openLocationSettings() async {
     #if os(iOS)
-        await SettingsNavigator.live().openSettings()
+        await MainActor.run {
+            guard let settingsURL = URL(string: UIApplication.openSettingsURLString) else {
+                return
+            }
+            UIApplication.shared.open(settingsURL)
+        }
     #elseif os(macOS)
         await MainActor.run {
             guard let settingsURL =
