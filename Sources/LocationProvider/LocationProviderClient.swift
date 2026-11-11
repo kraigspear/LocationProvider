@@ -24,7 +24,8 @@ extension LocationProvider {
         /// Provides an asynchronous stream of location updates.
         ///
         /// - Parameter liveConfiguration: The CoreLocation live update configuration preset.
-        /// - Returns: An `AsyncThrowingStream` of `LocationUpdate` instances representing changes in location or authorization status.
+        /// - Returns: An `AsyncThrowingStream` of `LocationUpdate` instances representing changes in location
+        ///   or authorization status.
         ///
         /// - Throws: The stream may throw the following errors:
         ///   - `CLError`: Core Location errors including:
@@ -34,10 +35,10 @@ extension LocationProvider {
         ///   - `CancellationError`: When the stream is cancelled (filtered out, not surfaced to users)
         ///   - Other system errors from CLLocationUpdate.liveUpdates()
         ///
-        /// - Important: This stream MUST propagate errors from CLLocationUpdate.liveUpdates() rather than swallowing them.
-        ///   Authorization and hardware errors need to surface with specific, actionable messages so users can
-        ///   understand and resolve permission/hardware issues (e.g., "Location access denied" with Settings instructions
-        ///   vs generic "location not found").
+        /// - Important: This stream MUST propagate errors from CLLocationUpdate.liveUpdates() rather than
+        ///   swallowing them. Authorization and hardware errors need to surface with specific, actionable
+        ///   messages so users can understand and resolve permission/hardware issues (e.g., "Location access
+        ///   denied" with Settings instructions vs generic "location not found").
         var updates: @Sendable (CLLocationUpdate.LiveConfiguration) -> AsyncThrowingStream<LocationUpdate, Error>
         /// Converts a physical location to a human-readable place name.
         ///

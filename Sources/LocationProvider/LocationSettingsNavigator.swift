@@ -64,7 +64,9 @@ public func openLocationSettings() async {
         await SettingsNavigator.live().openSettings()
     #elseif os(macOS)
         await MainActor.run {
-            guard let settingsURL = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices") else {
+            guard let settingsURL =
+                URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices")
+            else {
                 return
             }
             NSWorkspace.shared.open(settingsURL)

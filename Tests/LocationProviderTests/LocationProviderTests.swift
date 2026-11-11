@@ -1,7 +1,6 @@
 
-@testable import LocationProvider
-
 import CoreLocation
+@testable import LocationProvider
 import Testing
 
 @MainActor
@@ -70,8 +69,12 @@ struct LocationProviderTest {
         let locationProvider = LocationProvider(client: client)
         let gPSLocation = try await locationProvider.gpsLocation()
 
-        #expect(gPSLocation.location == expectedLocation, "Retries should surface the first valid CLLocation once availability recovers")
-        #expect(gPSLocation.name == "KraigTown", "Reverse geocoding should still return the resolved placemark after retries")
+        #expect(
+            gPSLocation.location == expectedLocation,
+            "Retries should surface the first valid CLLocation once availability recovers")
+        #expect(
+            gPSLocation.name == "KraigTown",
+            "Reverse geocoding should still return the resolved placemark after retries")
     }
 
     @Test("Reverse geocoding fails, name is given default GPS")
@@ -194,7 +197,10 @@ struct LocationProviderTest {
             // Then: The CLError.promptDeclined should be correctly mapped to GPSLocationError.preciseLocationRequired,
             // providing actionable guidance to users on how to enable precise location in Settings rather than
             // surfacing a generic system error that doesn't explain what went wrong or how to fix it.
-            await #expect(throws: GPSLocationError.preciseLocationRequired, "CLError.promptDeclined must map to GPSLocationError.preciseLocationRequired to provide users with actionable guidance on enabling precise location in Settings, distinguishing this user choice from other authorization failures") {
+            await #expect(
+                throws: GPSLocationError.preciseLocationRequired,
+                "CLError.promptDeclined must map to GPSLocationError.preciseLocationRequired to provide users with actionable guidance on enabling precise location in Settings, distinguishing this user choice from other authorization failures")
+            {
                 _ = try await locationProvider.gpsLocation(accuracyRequirement: .precise)
             }
         }
