@@ -117,10 +117,7 @@ public enum GPSLocationError: LocalizedError, Sendable {
         case .serviceSessionRequired:
             "This feature requires an active service session. Please ensure necessary services like Find My are enabled."
         case .preciseLocationRequired:
-            // Note: We use Bundle.main.displayName because location permissions are granted at the
-            // app level, not the framework level. Even if this code runs in a framework context,
-            // the relevant Settings path uses the main app's name. The BundleExtensions fallback
-            // to "this app" handles edge cases where CFBundleDisplayName is unavailable.
+            // Settings lists location permissions under the host app, so use Bundle.main.
             "Precise location is required but only approximate location is available. Enable Precise Location in Settings > Privacy & Security > Location Services > \(Bundle.main.displayName) to share your exact location."
         }
     }
@@ -172,5 +169,17 @@ extension GPSLocationError {
             // Other CLError types (like .rangingDisabled) aren't relevant for GPS location
             return nil
         }
+    }
+}
+
+private extension Bundle {
+    /// The app's user-facing name as Settings lists it, or "this app" when the bundle has none.
+    var displayName: String {
+        for key in ["CFBundleDisplayName", "CFBundleName"] {
+            if let name = object(forInfoDictionaryKey: key) as? String, !name.isEmpty {
+                return name
+            }
+        }
+        return "this app"
     }
 }
