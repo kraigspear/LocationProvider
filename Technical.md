@@ -25,10 +25,9 @@ classDiagram
     }
     
     class Client {
-        +updates(CLLocationUpdate.LiveConfiguration) -> AsyncThrowingStream<LocationUpdate, Error>
+        +updates(CLLocationUpdate.LiveConfiguration) -> any AsyncSequence<any LocationUpdate, any Error>
         +reverseGeocodeLocation(CLLocation) async throws -> String?
         +static func live() -> Client
-        +static test(updates: [LocationUpdate], reverseGeocodeLocation: Result<String?, Error>) -> Client
     }
 
     class AccuracyRequirement {

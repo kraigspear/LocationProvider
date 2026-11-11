@@ -4,7 +4,7 @@ Respond gracefully to location errors and provide excellent user experiences.
 
 ## Overview
 
-LocationProvider provides comprehensive error handling through the ``GPSLocationError`` enum with significant improvements in error propagation and user messaging. The framework now uses `AsyncThrowingStream` to properly surface Core Location errors with specific, actionable messages instead of generic failures. This guide shows you how to handle these errors effectively and provide appropriate fallbacks.
+LocationProvider provides comprehensive error handling through the ``GPSLocationError`` enum with significant improvements in error propagation and user messaging. The framework surfaces Core Location errors with specific, actionable messages instead of generic failures. This guide shows you how to handle these errors effectively and provide appropriate fallbacks.
 
 ## Critical Error Handling Improvements
 
@@ -16,7 +16,7 @@ LocationProvider has undergone significant improvements to error handling:
 - CLError.denied was not properly surfaced to applications
 
 ### After: Specific, Actionable Error Messages
-- `Client.updates()` now returns `AsyncThrowingStream<LocationUpdate, Error>` instead of `AsyncStream`
+- Errors thrown by Core Location's live updates propagate instead of being swallowed
 - CLError types are mapped to specific GPSLocationError cases with clear user guidance
 - Authorization errors surface immediately with instructions on how to fix them
 - CancellationError is filtered out (not surfaced to users as it's expected behavior)

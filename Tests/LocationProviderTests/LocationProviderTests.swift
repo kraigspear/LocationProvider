@@ -160,6 +160,23 @@ struct LocationProviderTest {
         }
     }
 
+    @Test("Stream ending in CancellationError surfaces the last transient error")
+    func streamCancellationSurfacesLastTransientError() async {
+        // Live updates throw CancellationError straight through, so the provider must not surface it
+        let updateStream = AsyncThrowingStream<LocationUpdate, Error> { continuation in
+            continuation.yield(MockLocationUpdate.locationNotAvailable())
+            continuation.finish(throwing: CancellationError())
+        }
+        let client = LocationProvider.Client(
+            updates: { _ in updateStream },
+            reverseGeocodeLocation: { _ in nil })
+        let locationProvider = LocationProvider(client: client, clock: TestClock())
+
+        await #expect(throws: GPSLocationError.locationUnavailable) {
+            _ = try await locationProvider.gpsLocation()
+        }
+    }
+
     @MainActor
     struct Accuracy {
         @Test("Reduced accuracy is returned when accepted")
