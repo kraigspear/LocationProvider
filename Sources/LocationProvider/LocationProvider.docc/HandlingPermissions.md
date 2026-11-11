@@ -413,30 +413,7 @@ class LocationManager {
 
 ## Testing Permission Scenarios
 
-Test different permission states using mock clients:
-
-```swift
-// Test permission denied
-let deniedClient = LocationProvider.Client.test(
-    updates: [MockLocationUpdate.denied()],
-    reverseGeocodeLocation: .success("Test")
-)
-
-// Test globally denied
-let globallyDeniedClient = LocationProvider.Client.test(
-    updates: [MockLocationUpdate.deniedGlobally()],
-    reverseGeocodeLocation: .success("Test")
-)
-
-// Test permission request flow
-let permissionFlowClient = LocationProvider.Client.test(
-    updates: [
-        MockLocationUpdate.requestInProgress(),
-        MockLocationUpdate.authorized(with: CLLocation.appleHQ)
-    ],
-    reverseGeocodeLocation: .success("Cupertino")
-)
-```
+Permission outcomes reach your code as ``GPSLocationError/authorizationDenied``, ``GPSLocationError/authorizationRestricted``, and ``GPSLocationError/insufficientlyInUse``. Have a mock provider throw each one to test your UI's response. See <doc:Testing>.
 
 ## Next Steps
 

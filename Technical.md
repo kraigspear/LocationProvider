@@ -198,25 +198,27 @@ The framework uses a comprehensive error handling system:
 
 ### Testing Support
 
-The framework is designed for testability:
+The package's own tests replace `LocationProvider.Client` and the clock through the internal `init(client:configuration:clock:)`. These seams are internal; apps test against a protocol of their own (see the DocC Testing article).
 
-1. **Test Client**
+1. **Scripted client** (`Tests/LocationProviderTests/TestClient.swift`)
    ```swift
-   let testClient = LocationProvider.Client.test(
-       updates: [mockUpdate],
+   let clock = TestClock()
+   let client = LocationProvider.Client.test(
+       [.update(MockLocationUpdate.locationNotAvailable()), .advance(.seconds(5)), .update(locationUpdate)],
+       clock: clock,
        reverseGeocodeLocation: .success("Test Location")
    )
+   let provider = LocationProvider(client: client, clock: clock)
    ```
+   `.advance` runs only when the provider asks for its next update, so timeouts and grace periods are deterministic.
 
-2. **Debug Locations**
-   - Predefined locations
-   - Common landmarks
-   - Tech company headquarters
+2. **TestClock** (`Tests/LocationProviderTests/TestClock.swift`)
+   - Time moves only on `advance(by:)`
+   - `waitForSleepers(_:)` lets a test act once a sleep is registered
 
-3. **Mock Updates**
+3. **Mock updates** (`MockLocationUpdate`)
    - Customizable states
-   - Error simulation
-   - Authorization testing
+   - Authorization and availability flags
 
 ## Best Practices
 

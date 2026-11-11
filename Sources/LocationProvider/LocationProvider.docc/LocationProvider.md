@@ -13,7 +13,7 @@ LocationProvider is a SwiftUI-ready framework that provides a clean, modern API 
 - **Reverse Geocoding**: Automatic conversion of coordinates to readable location names
 - **Permission Management**: Built-in handling of location authorization states
 - **SwiftUI Integration**: @MainActor safety for seamless UI updates
-- **Comprehensive Testing**: Mock clients and test utilities included
+- **Testable**: Errors and results are plain value types that a mock can return
 - **Debug Support**: Predefined locations for development and testing
 
 ### Requirements
