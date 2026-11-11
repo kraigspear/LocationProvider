@@ -469,53 +469,7 @@ struct LocationView: View {
 
 ### Dependency Injection for Testing
 
-Make LocationProvider injectable for better testing:
-
-```swift
-protocol LocationProviding {
-    func gpsLocation() async throws -> GPSLocation
-}
-
-extension LocationProvider: LocationProviding {}
-
-@MainActor
-@Observable
-class LocationViewModel {
-    var location: GPSLocation?
-    var error: GPSLocationError?
-
-    private let locationProvider: LocationProviding
-
-    init(locationProvider: LocationProviding = LocationProvider()) {
-        self.locationProvider = locationProvider
-    }
-
-    func requestLocation() async {
-        do {
-            location = try await locationProvider.gpsLocation()
-            error = nil
-        } catch let locationError as GPSLocationError {
-            error = locationError
-        } catch {
-            error = .notFound
-        }
-    }
-}
-
-// Easy testing with mock
-class MockLocationProvider: LocationProviding {
-    var result: Result<GPSLocation, Error> = .failure(GPSLocationError.notFound)
-
-    func gpsLocation() async throws -> GPSLocation {
-        switch result {
-        case .success(let location):
-            return location
-        case .failure(let error):
-            throw error
-        }
-    }
-}
-```
+Depend on a small protocol your app owns rather than the concrete `LocationProvider`, so tests can supply a mock. <doc:Testing> shows the protocol, a mock, and tests for each outcome.
 
 ### Error Handling Strategy
 

@@ -477,35 +477,7 @@ extension UserDefaults {
 
 ## Testing Error Scenarios
 
-Use mock clients to test all error scenarios:
-
-```swift
-@Test("Handle authorization denied error")
-func testAuthorizationDeniedError() async {
-    let client = LocationProvider.Client.test(
-        updates: [MockLocationUpdate.denied()],
-        reverseGeocodeLocation: .success("Test")
-    )
-    let provider = LocationProvider(client: client)
-
-    await #expect(throws: GPSLocationError.authorizationDenied) {
-        _ = try await provider.gpsLocation()
-    }
-}
-
-@Test("Handle location unavailable error")
-func testLocationUnavailableError() async {
-    let client = LocationProvider.Client.test(
-        updates: [MockLocationUpdate.locationNotAvailable()],
-        reverseGeocodeLocation: .success("Test")
-    )
-    let provider = LocationProvider(client: client)
-
-    await #expect(throws: GPSLocationError.locationUnavailable) {
-        _ = try await provider.gpsLocation()
-    }
-}
-```
+To test how your code handles each ``GPSLocationError``, put `LocationProvider` behind a protocol and have a mock throw the error under test. See <doc:Testing>.
 
 ## Next Steps
 

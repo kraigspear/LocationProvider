@@ -163,30 +163,18 @@ struct LocationView: View {
 
 ### Testing
 
-The framework is designed with testability in mind. You can create a test client with predefined responses:
+To test code that uses `LocationProvider`, put it behind a protocol your app owns and inject a mock:
 
 ```swift
-// Testing successful location retrieval
-let testClient = LocationProvider.Client.test(
-    updates: [MockLocationUpdate(location: CLLocation.appleHQ)],
-    reverseGeocodeLocation: .success("Cupertino")
-)
-let provider = LocationProvider(client: testClient)
+@MainActor
+protocol LocationProviding {
+    func gpsLocation(accuracyRequirement: LocationProvider.AccuracyRequirement) async throws -> GPSLocation
+}
 
-// Testing permission denied scenario
-let deniedClient = LocationProvider.Client.test(
-    updates: [MockLocationUpdate.denied()],
-    reverseGeocodeLocation: .success("Test")
-)
-// This will throw GPSLocationError.authorizationDenied
-
-// Testing network failures in reverse geocoding
-let networkFailClient = LocationProvider.Client.test(
-    updates: [MockLocationUpdate(location: validLocation)],
-    reverseGeocodeLocation: .failure(URLError(.notConnectedToInternet))
-)
-// Will return location with default "GPS" name
+extension LocationProvider: LocationProviding {}
 ```
+
+A mock returns a `GPSLocation` or throws a `GPSLocationError`. The DocC Testing article has a full example.
 
 ### Debug Support
 
