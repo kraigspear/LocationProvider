@@ -40,6 +40,7 @@ public final class LocationProvider {
     /// The client responsible for handling location services
     private let client: Client
     private let configuration: Configuration
+    private let clock: any Clock<Duration>
 
     // MARK: - Initialization
 
@@ -48,15 +49,18 @@ public final class LocationProvider {
     public init(configuration: Configuration = .default) {
         client = .live()
         self.configuration = configuration
+        clock = ContinuousClock()
     }
 
     /// Creates a new instance of LocationProvider with a custom client
     /// - Parameters:
     ///   - client: The client to use for location services
     ///   - configuration: Timing parameters that control acquisition timeouts and grace periods.
-    init(client: Client, configuration: Configuration = .default) {
+    ///   - clock: Measures the acquisition timeout and grace period. No default, so tests can't fall back to wall time.
+    init(client: Client, configuration: Configuration = .default, clock: any Clock<Duration>) {
         self.client = client
         self.configuration = configuration
+        self.clock = clock
     }
 
     // MARK: - Public Interface
@@ -80,7 +84,9 @@ public final class LocationProvider {
     {
         logger.debug("Starting GPS location request")
 
-        let firstLiveUpdate = try await firstLiveUpdate(accuracyRequirement: accuracyRequirement)
+        // A local is required: Swift opens the `any Clock` existential only from a local value, not a stored property.
+        let clock = clock
+        let firstLiveUpdate = try await firstLiveUpdate(accuracyRequirement: accuracyRequirement, clock: clock)
         logger.debug("Received live update, attempting reverse geocode")
 
         // Attempt to get location name but don't fail if reverse geocoding fails
@@ -112,19 +118,14 @@ public final class LocationProvider {
     /// - Throws: `GPSLocationError.notFound` if no valid location can be obtained,
     ///          or other relevant `GPSLocationError` cases based on the update state
     private func firstLiveUpdate(
-        accuracyRequirement: AccuracyRequirement) async throws -> CLLocation
+        accuracyRequirement: AccuracyRequirement,
+        clock: some Clock<Duration>) async throws -> CLLocation
     {
         logger.debug("Starting live update monitoring")
 
-        let clock = ContinuousClock()
         let state = AcquisitionState(start: clock.now)
         let configuration = configuration
         let updates = client.updates
-
-        enum RaceOutcome {
-            case location(CLLocation)
-            case failure(Error)
-        }
 
         let outcome = await withTaskGroup(of: RaceOutcome.self, returning: RaceOutcome.self) { group in
             group.addTask {
@@ -314,16 +315,21 @@ private extension LocationProvider.AccuracyRequirement {
     }
 }
 
-private actor AcquisitionState {
-    private var acquisitionWindowStart: ContinuousClock.Instant
-    private var locationUnavailableStart: ContinuousClock.Instant?
+private enum RaceOutcome {
+    case location(CLLocation)
+    case failure(Error)
+}
+
+private actor AcquisitionState<Instant: InstantProtocol<Duration>> {
+    private var acquisitionWindowStart: Instant
+    private var locationUnavailableStart: Instant?
     private var lastTransientError: GPSLocationError?
 
-    init(start: ContinuousClock.Instant) {
+    init(start: Instant) {
         acquisitionWindowStart = start
     }
 
-    func resetForAuthorization(now: ContinuousClock.Instant) {
+    func resetForAuthorization(now: Instant) {
         acquisitionWindowStart = now
         locationUnavailableStart = nil
         lastTransientError = nil
@@ -333,7 +339,7 @@ private actor AcquisitionState {
         lastTransientError = error
     }
 
-    func markLocationUnavailable(now: ContinuousClock.Instant) -> Duration? {
+    func markLocationUnavailable(now: Instant) -> Duration? {
         if let start = locationUnavailableStart {
             return start.duration(to: now)
         }
@@ -345,7 +351,7 @@ private actor AcquisitionState {
         locationUnavailableStart = nil
     }
 
-    func currentAcquisitionStart() -> ContinuousClock.Instant {
+    func currentAcquisitionStart() -> Instant {
         acquisitionWindowStart
     }
 
