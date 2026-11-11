@@ -70,8 +70,8 @@ public final class LocationProvider {
     ///
     /// - Parameter accuracyRequirement: Determines if reduced-accuracy locations are acceptable.
     ///   Use `.any` (default) for general location needs where approximate location (within ~1-20km) is sufficient,
-    ///   such as weather updates, timezone detection, or regional content. Use `.precise` when exact location is critical,
-    ///   such as navigation, fitness tracking, or location sharing. Note that `.precise` may increase
+    ///   such as weather updates, timezone detection, or regional content. Use `.precise` when exact location
+    ///   is critical, such as navigation, fitness tracking, or location sharing. Note that `.precise` may increase
     ///   wait time and battery usage as it bypasses iOS's privacy-preserving reduced accuracy mode.
     /// - Returns: A `GPSLocation` object containing the location coordinates and optional name
     /// - Throws: `GPSLocationError.notFound` if unable to get a location, or other location-related errors
@@ -141,7 +141,9 @@ public final class LocationProvider {
 
                         if let location = update.location {
                             if update.accuracyLimited, !accuracyRequirement.acceptsReducedAccuracy {
-                                logger.debug("Limited accuracy location received but precise accuracy required; continuing")
+                                logger
+                                    .debug(
+                                        "Limited accuracy location received but precise accuracy required; continuing")
                                 await state.setLastTransientError(.preciseLocationRequired)
                                 continue
                             }
@@ -157,11 +159,15 @@ public final class LocationProvider {
                                 let elapsed = await state.markLocationUnavailable(now: now)
                                 if let elapsed {
                                     if elapsed >= configuration.locationUnavailableGracePeriod {
-                                        logger.error("Location unavailable exceeded grace period (\(String(describing: elapsed))); throwing")
+                                        logger
+                                            .error(
+                                                "Location unavailable exceeded grace period (\(String(describing: elapsed))); throwing")
                                         return .failure(error)
                                     }
 
-                                    logger.debug("Location unavailable within grace period (\(String(describing: elapsed))); awaiting recovery")
+                                    logger
+                                        .debug(
+                                            "Location unavailable within grace period (\(String(describing: elapsed))); awaiting recovery")
                                 } else {
                                     logger.debug("Location unavailable reported; starting grace period")
                                 }
@@ -212,7 +218,9 @@ public final class LocationProvider {
 
                         let timeoutError = await state.currentTimeoutError()
                         let elapsed = observedStart.duration(to: clock.now)
-                        logger.error("Location acquisition timed out after \(String(describing: elapsed)); throwing \(String(describing: timeoutError))")
+                        logger
+                            .error(
+                                "Location acquisition timed out after \(String(describing: elapsed)); throwing \(String(describing: timeoutError))")
                         return .failure(timeoutError)
                     }
                 } catch {

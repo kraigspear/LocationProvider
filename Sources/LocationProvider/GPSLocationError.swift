@@ -160,7 +160,8 @@ extension GPSLocationError {
             // We map this to preciseLocationRequired to provide actionable guidance on how to
             // enable precise location in Settings.
             self = .preciseLocationRequired
-        case .locationUnknown, .network, .deferredAccuracyTooLow, .deferredDistanceFiltered, .deferredCanceled, .deferredFailed, .headingFailure:
+        case .locationUnknown, .network, .deferredAccuracyTooLow, .deferredDistanceFiltered, .deferredCanceled,
+             .deferredFailed, .headingFailure:
             // These are all transient errors where location hardware/service is temporarily
             // unable to determine position. We map them all to locationUnavailable since
             // the user action is the same: wait and retry.

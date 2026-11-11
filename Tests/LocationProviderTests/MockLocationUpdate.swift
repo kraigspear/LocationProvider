@@ -5,9 +5,8 @@
 //  Created by Kraig Spear on 1/26/25.
 //
 
-@testable import LocationProvider
-
 import CoreLocation
+@testable import LocationProvider
 
 /// A mock implementation of `LocationUpdate` protocol for testing purposes.
 struct MockLocationUpdate: LocationUpdate {

@@ -40,12 +40,12 @@ public struct GPSLocation: CustomStringConvertible, Sendable, Equatable {
 #if DEBUG
 
     public extension GPSLocation {
-        // Major tech company headquarters
+        /// Major tech company headquarters
         static let appleHQ = GPSLocation(
             name: "Apple Park",
             location: CLLocation(latitude: 37.334922, longitude: -122.009033))
 
-        // Famous landmarks
+        /// Famous landmarks
         static let statueOfLiberty = GPSLocation(
             name: "Statue of Liberty",
             location: CLLocation(latitude: 40.689247, longitude: -74.044502))
