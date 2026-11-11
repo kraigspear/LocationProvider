@@ -49,6 +49,7 @@ struct FindLocationView: View {
                     .foregroundColor(.white)
                     .cornerRadius(10)
             }
+            .accessibilityIdentifier("getLocationButton")
         }
     }
 
@@ -61,6 +62,7 @@ struct FindLocationView: View {
                 Text(message)
                     .font(.title3)
                     .foregroundStyle(.red)
+                    .accessibilityIdentifier("locationErrorMessage")
 
                 Button(action: {
                     Task {
