@@ -2,8 +2,6 @@
 
 A modern Swift framework for handling GPS location services with async/await support.
 
-[Technical Overview](Technical.md)
-
 ## Features
 
 - ✨ Modern Swift async/await API
@@ -261,8 +259,6 @@ The framework follows a clean architecture pattern optimizing for:
 - 🔒 **Thread Safety**: @MainActor annotations and Sendable protocols
 - ⚡️ **Performance**: Efficient location updates and memory management
 - 🎯 **Error Handling**: Comprehensive error types with user guidance
-
-For detailed technical documentation including class diagrams and sequence flows, see [Technical Documentation](Technical.md).
 
 ### Key Components
 
