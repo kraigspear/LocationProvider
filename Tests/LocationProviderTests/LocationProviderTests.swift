@@ -3,17 +3,21 @@ import CoreLocation
 @testable import LocationProvider
 import Testing
 
+/// Time limit turns a stuck clock or lost cancellation into a failure instead of a hang.
 @MainActor
+@Suite(.timeLimit(.minutes(1)))
 struct LocationProviderTest {
     @Test("Initially ask for permissions, then receive a location")
     func askedForPermissionReceived() async throws {
+        let clock = TestClock()
         let expectedLocation = GPSLocation.statueOfLiberty.location
         let askForPermissions = MockLocationUpdate.requestInProgress()
         let locationUpdate = MockLocationUpdate(location: expectedLocation)
         let client = LocationProvider.Client.test(
-            updates: [askForPermissions, locationUpdate],
+            [.update(askForPermissions), .update(locationUpdate)],
+            clock: clock,
             reverseGeocodeLocation: .success("KraigTown"))
-        let locationProvider = LocationProvider(client: client)
+        let locationProvider = LocationProvider(client: client, clock: clock)
         let gPSLocation = try await locationProvider.gpsLocation()
 
         #expect(gPSLocation.location == expectedLocation)
@@ -22,12 +26,14 @@ struct LocationProviderTest {
 
     @Test("Success finding location")
     func locationReceived() async throws {
+        let clock = TestClock()
         let expectedLocation = GPSLocation.statueOfLiberty.location
         let locationUpdate = MockLocationUpdate(location: expectedLocation)
         let client = LocationProvider.Client.test(
-            updates: [locationUpdate],
+            [.update(locationUpdate)],
+            clock: clock,
             reverseGeocodeLocation: .success("KraigTown"))
-        let locationProvider = LocationProvider(client: client)
+        let locationProvider = LocationProvider(client: client, clock: clock)
         let gPSLocation = try await locationProvider.gpsLocation()
 
         #expect(gPSLocation.location == expectedLocation)
@@ -36,6 +42,7 @@ struct LocationProviderTest {
 
     @Test("When 2 locations are provided, use the first")
     func usesFirstProvidedLocation() async throws {
+        let clock = TestClock()
         let firstLocation = GPSLocation.statueOfLiberty.location
         let secondLocation = CLLocation(latitude: 0, longitude: 0)
 
@@ -43,10 +50,11 @@ struct LocationProviderTest {
         let secondUpdate = MockLocationUpdate(location: secondLocation)
 
         let client = LocationProvider.Client.test(
-            updates: [firstUpdate, secondUpdate],
+            [.update(firstUpdate), .update(secondUpdate)],
+            clock: clock,
             reverseGeocodeLocation: .success("KraigTown"))
 
-        let locationProvider = LocationProvider(client: client)
+        let locationProvider = LocationProvider(client: client, clock: clock)
         let gPSLocation = try await locationProvider.gpsLocation()
 
         #expect(gPSLocation.location == firstLocation, "First location should be used")
@@ -55,18 +63,20 @@ struct LocationProviderTest {
 
     @Test("Location unavailable updates retry until success")
     func locationUnavailableRetries() async throws {
+        let clock = TestClock()
         let expectedLocation = GPSLocation.statueOfLiberty.location
         let locationUpdate = MockLocationUpdate(location: expectedLocation)
 
         let client = LocationProvider.Client.test(
-            updates: [
-                MockLocationUpdate.locationNotAvailable(),
-                MockLocationUpdate.locationNotAvailable(),
-                locationUpdate,
+            [
+                .update(MockLocationUpdate.locationNotAvailable()),
+                .update(MockLocationUpdate.locationNotAvailable()),
+                .update(locationUpdate),
             ],
+            clock: clock,
             reverseGeocodeLocation: .success("KraigTown"))
 
-        let locationProvider = LocationProvider(client: client)
+        let locationProvider = LocationProvider(client: client, clock: clock)
         let gPSLocation = try await locationProvider.gpsLocation()
 
         #expect(
@@ -79,48 +89,62 @@ struct LocationProviderTest {
 
     @Test("Reverse geocoding fails, name is given default GPS")
     func reverseGeocodingError() async throws {
+        let clock = TestClock()
         let expectedLocation = GPSLocation.statueOfLiberty.location
         let locationUpdate = MockLocationUpdate(location: expectedLocation)
         let client = LocationProvider.Client.test(
-            updates: [locationUpdate],
+            [.update(locationUpdate)],
+            clock: clock,
             reverseGeocodeLocation: .failure(NSError(domain: "Geocoding", code: -1)))
-        let locationProvider = LocationProvider(client: client)
+        let locationProvider = LocationProvider(client: client, clock: clock)
         let gPSLocation = try await locationProvider.gpsLocation()
 
         #expect(gPSLocation.location == expectedLocation)
         #expect(gPSLocation.name == "GPS")
     }
 
-    @Test("Location unavailable update followed by success is tolerated")
+    @Test("Location unavailable within the grace period, then a location, returns the location")
     func locationUnavailableRecovers() async throws {
         let expectedLocation = GPSLocation.statueOfLiberty.location
-        let updateStream = AsyncThrowingStream<LocationUpdate, Error> { continuation in
-            Task {
-                continuation.yield(MockLocationUpdate.locationNotAvailable())
-                try? await Task.sleep(for: .seconds(1))
-                continuation.yield(MockLocationUpdate(location: expectedLocation))
-                continuation.finish()
-            }
-        }
-
-        let client = LocationProvider.Client(
-            updates: { _ in updateStream },
-            reverseGeocodeLocation: { _ in "KraigTown" })
-
-        let locationProvider = LocationProvider(client: client)
-        let clock = ContinuousClock()
-        let start = clock.now
+        let clock = TestClock()
+        let client = LocationProvider.Client.test(
+            [
+                .update(MockLocationUpdate.locationNotAvailable()),
+                .advance(.seconds(4)),
+                .update(MockLocationUpdate(location: expectedLocation)),
+            ],
+            clock: clock,
+            reverseGeocodeLocation: .success("KraigTown"))
+        let locationProvider = LocationProvider(client: client, clock: clock)
 
         let gPSLocation = try await locationProvider.gpsLocation()
-        let elapsed = start.duration(to: clock.now)
 
         #expect(gPSLocation.location == expectedLocation)
         #expect(gPSLocation.name == "KraigTown")
-        #expect(elapsed >= .seconds(1))
+    }
+
+    @Test("Location unavailable for the whole grace period throws locationUnavailable")
+    func locationUnavailableExceedsGracePeriod() async throws {
+        let clock = TestClock()
+        let client = LocationProvider.Client.test(
+            [
+                .update(MockLocationUpdate.locationNotAvailable()),
+                .advance(.seconds(5)),
+                .update(MockLocationUpdate.locationNotAvailable()),
+                // Only reached if the second update is wrongly tolerated
+                .update(MockLocationUpdate(location: GPSLocation.statueOfLiberty.location)),
+            ],
+            clock: clock)
+        let locationProvider = LocationProvider(client: client, clock: clock)
+
+        await #expect(throws: GPSLocationError.locationUnavailable) {
+            _ = try await locationProvider.gpsLocation()
+        }
     }
 
     @Test("Stream failure surfaces authorization denied")
     func streamFailureSurfacesAuthorizationDenied() async throws {
+        let clock = TestClock()
         let updateStream = AsyncThrowingStream<LocationUpdate, Error> { continuation in
             continuation.finish(throwing: CLError(.denied))
         }
@@ -129,7 +153,7 @@ struct LocationProviderTest {
             updates: { _ in updateStream },
             reverseGeocodeLocation: { _ in nil })
 
-        let locationProvider = LocationProvider(client: client)
+        let locationProvider = LocationProvider(client: client, clock: clock)
 
         await #expect(throws: GPSLocationError.authorizationDenied) {
             _ = try await locationProvider.gpsLocation()
@@ -140,16 +164,18 @@ struct LocationProviderTest {
     struct Accuracy {
         @Test("Reduced accuracy is returned when accepted")
         func reducedAccuracyReturnedWhenAccepted() async throws {
+            let clock = TestClock()
             let expectedLocation = CLLocation(latitude: 1, longitude: 1)
             let limitedUpdate = MockLocationUpdate(
                 location: expectedLocation,
                 accuracyLimited: true)
 
             let client = LocationProvider.Client.test(
-                updates: [limitedUpdate],
+                [.update(limitedUpdate)],
+                clock: clock,
                 reverseGeocodeLocation: .success(nil))
 
-            let locationProvider = LocationProvider(client: client)
+            let locationProvider = LocationProvider(client: client, clock: clock)
             let gpsLocation = try await locationProvider.gpsLocation(accuracyRequirement: .any)
 
             #expect(gpsLocation.location == expectedLocation)
@@ -157,6 +183,7 @@ struct LocationProviderTest {
 
         @Test("Reduced accuracy rejected when precise required")
         func reducedAccuracyRejectedWhenPreciseRequired() async throws {
+            let clock = TestClock()
             let limitedUpdate = MockLocationUpdate(
                 location: CLLocation(latitude: 1, longitude: 1),
                 accuracyLimited: true)
@@ -170,7 +197,7 @@ struct LocationProviderTest {
                 updates: { _ in updateStream },
                 reverseGeocodeLocation: { _ in nil })
 
-            let locationProvider = LocationProvider(client: client)
+            let locationProvider = LocationProvider(client: client, clock: clock)
 
             await #expect(throws: GPSLocationError.preciseLocationRequired) {
                 _ = try await locationProvider.gpsLocation(accuracyRequirement: .precise)
@@ -179,6 +206,7 @@ struct LocationProviderTest {
 
         @Test("Prompt declined for precise location surfaces preciseLocationRequired")
         func promptDeclinedForPreciseLocationSurfacesPreciseLocationRequired() async throws {
+            let clock = TestClock()
             // Given: A location stream that throws CLError.promptDeclined, simulating the scenario
             // where the user dismisses the iOS "Precise Location" permission prompt without granting
             // precise accuracy. This occurs when an app with approximate location permission requests
@@ -191,7 +219,7 @@ struct LocationProviderTest {
                 updates: { _ in updateStream },
                 reverseGeocodeLocation: { _ in nil })
 
-            let locationProvider = LocationProvider(client: client)
+            let locationProvider = LocationProvider(client: client, clock: clock)
 
             // When: The app calls gpsLocation() with precise accuracy requirement
             // Then: The CLError.promptDeclined should be correctly mapped to GPSLocationError.preciseLocationRequired,
@@ -210,6 +238,7 @@ struct LocationProviderTest {
     struct Settings {
         @Test("Live configuration forwarded to client updates")
         func liveConfigurationForwarded() async throws {
+            let clock = TestClock()
             let expectedLocation = CLLocation(latitude: 1, longitude: 1)
             let expectedConfigurationDescription = String(describing: CLLocationUpdate.LiveConfiguration.fitness)
 
@@ -228,7 +257,7 @@ struct LocationProviderTest {
             let providerConfiguration = LocationProvider.Configuration(
                 liveConfiguration: .fitness)
 
-            let provider = LocationProvider(client: client, configuration: providerConfiguration)
+            let provider = LocationProvider(client: client, configuration: providerConfiguration, clock: TestClock())
 
             _ = try await provider.gpsLocation()
         }
@@ -238,23 +267,20 @@ struct LocationProviderTest {
     struct Timeouts {
         @Test("Custom acquisition timeout fails fast")
         func customTimeoutFailsFast() async throws {
-            let updateStream = AsyncThrowingStream<LocationUpdate, Error> { continuation in
-                Task {
-                    continuation.yield(MockLocationUpdate.locationNotAvailable())
-                    // keep stream alive without yielding additional updates
-                    try? await Task.sleep(for: .seconds(3600))
-                }
-            }
-
-            let client = LocationProvider.Client(
-                updates: { _ in updateStream },
-                reverseGeocodeLocation: { _ in nil })
+            let clock = TestClock()
+            let client = LocationProvider.Client.test(
+                [
+                    .update(MockLocationUpdate.locationNotAvailable()),
+                    .advance(.milliseconds(200)),
+                    .stall,
+                ],
+                clock: clock)
 
             let configuration = LocationProvider.Configuration(
                 locationAcquisitionTimeout: .milliseconds(200),
                 locationUnavailableGracePeriod: .seconds(0))
 
-            let provider = LocationProvider(client: client, configuration: configuration)
+            let provider = LocationProvider(client: client, configuration: configuration, clock: clock)
 
             await #expect(throws: GPSLocationError.locationUnavailable) {
                 _ = try await provider.gpsLocation()
@@ -263,22 +289,14 @@ struct LocationProviderTest {
 
         @Test("Stream stall times out even without updates")
         func streamStallTimesOutWithoutUpdates() async throws {
-            let updateStream = AsyncThrowingStream<LocationUpdate, Error> { continuation in
-                Task {
-                    try? await Task.sleep(for: .seconds(3600))
-                    continuation.finish()
-                }
-            }
-
-            let client = LocationProvider.Client(
-                updates: { _ in updateStream },
-                reverseGeocodeLocation: { _ in nil })
+            let clock = TestClock()
+            let client = LocationProvider.Client.test([.advance(.milliseconds(200)), .stall], clock: clock)
 
             let configuration = LocationProvider.Configuration(
                 locationAcquisitionTimeout: .milliseconds(200),
                 locationUnavailableGracePeriod: .seconds(0))
 
-            let provider = LocationProvider(client: client, configuration: configuration)
+            let provider = LocationProvider(client: client, configuration: configuration, clock: clock)
 
             await #expect(throws: GPSLocationError.notFound) {
                 _ = try await provider.gpsLocation()
@@ -290,11 +308,13 @@ struct LocationProviderTest {
     struct Permissions {
         @Test("Permissions denied, Error thrown")
         func permissionsDenied() async throws {
+            let clock = TestClock()
             let locationUpdate = MockLocationUpdate.denied()
             let client = LocationProvider.Client.test(
-                updates: [locationUpdate],
+                [.update(locationUpdate)],
+                clock: clock,
                 reverseGeocodeLocation: .success("KraigTown"))
-            let locationProvider = LocationProvider(client: client)
+            let locationProvider = LocationProvider(client: client, clock: clock)
 
             await #expect(throws: GPSLocationError.authorizationDenied) {
                 _ = try await locationProvider.gpsLocation()
@@ -303,11 +323,13 @@ struct LocationProviderTest {
 
         @Test("Location services restricted, Error thrown")
         func restrictedAccess() async throws {
+            let clock = TestClock()
             let locationUpdate = MockLocationUpdate.restricted()
             let client = LocationProvider.Client.test(
-                updates: [locationUpdate],
+                [.update(locationUpdate)],
+                clock: clock,
                 reverseGeocodeLocation: .success("KraigTown"))
-            let locationProvider = LocationProvider(client: client)
+            let locationProvider = LocationProvider(client: client, clock: clock)
 
             await #expect(throws: GPSLocationError.authorizationRestricted) {
                 _ = try await locationProvider.gpsLocation()
@@ -316,11 +338,13 @@ struct LocationProviderTest {
 
         @Test("Location services denied globally maps to authorizationDenied")
         func globallyDenied() async throws {
+            let clock = TestClock()
             let locationUpdate = MockLocationUpdate(authorizationDeniedGlobally: true, locationUnavailable: true)
             let client = LocationProvider.Client.test(
-                updates: [locationUpdate],
+                [.update(locationUpdate)],
+                clock: clock,
                 reverseGeocodeLocation: .success("KraigTown"))
-            let locationProvider = LocationProvider(client: client)
+            let locationProvider = LocationProvider(client: client, clock: clock)
 
             await #expect(throws: GPSLocationError.authorizationDenied) {
                 _ = try await locationProvider.gpsLocation()
@@ -329,11 +353,13 @@ struct LocationProviderTest {
 
         @Test("Insufficient location usage permissions, Error thrown")
         func insufficientPermissions() async throws {
+            let clock = TestClock()
             let locationUpdate = MockLocationUpdate.insufficientlyInUse()
             let client = LocationProvider.Client.test(
-                updates: [locationUpdate],
+                [.update(locationUpdate)],
+                clock: clock,
                 reverseGeocodeLocation: .success("KraigTown"))
-            let locationProvider = LocationProvider(client: client)
+            let locationProvider = LocationProvider(client: client, clock: clock)
 
             await #expect(throws: GPSLocationError.insufficientlyInUse) {
                 _ = try await locationProvider.gpsLocation()
@@ -342,11 +368,13 @@ struct LocationProviderTest {
 
         @Test("Service session required, Error thrown")
         func serviceSessionNeeded() async throws {
+            let clock = TestClock()
             let locationUpdate = MockLocationUpdate.serviceSessionRequired()
             let client = LocationProvider.Client.test(
-                updates: [locationUpdate],
+                [.update(locationUpdate)],
+                clock: clock,
                 reverseGeocodeLocation: .success("KraigTown"))
-            let locationProvider = LocationProvider(client: client)
+            let locationProvider = LocationProvider(client: client, clock: clock)
 
             await #expect(throws: GPSLocationError.serviceSessionRequired) {
                 _ = try await locationProvider.gpsLocation()
