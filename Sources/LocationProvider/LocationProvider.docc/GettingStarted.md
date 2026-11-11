@@ -90,7 +90,7 @@ print("Timestamp: \(gpsLocation.location.timestamp)")
 When you call `gpsLocation()`, LocationProvider:
 
 1. **Requests Permissions**: Automatically handles location authorization if needed
-2. **Gets Location**: Waits for the first accurate GPS reading using `AsyncThrowingStream`
+2. **Gets Location**: Waits for the first accurate GPS reading from Core Location's live updates
 3. **Error Handling**: Maps Core Location errors to specific, user-friendly messages
 4. **Reverse Geocodes**: Converts coordinates to a readable place name
 5. **Returns Result**: Provides both coordinates and human-readable name
@@ -99,7 +99,7 @@ The entire process is designed to be quick and battery-efficient, stopping locat
 
 ### Improved Error Handling
 
-LocationProvider now uses `AsyncThrowingStream` to properly surface Core Location errors with specific, actionable messages:
+LocationProvider surfaces Core Location errors with specific, actionable messages:
 
 - **Authorization errors** are detected immediately and provide Settings instructions
 - **Technical failures** distinguish between temporary GPS issues and permission problems

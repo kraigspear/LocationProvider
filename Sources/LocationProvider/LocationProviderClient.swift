@@ -7,9 +7,6 @@
 
 @preconcurrency import CoreLocation
 @preconcurrency import MapKit
-import os.log
-
-private let logger = Logger(subsystem: "com.spearware.locationprovider", category: "Client")
 
 extension LocationProvider {
     /// A client interface for location services that handles location updates and reverse geocoding.
@@ -21,25 +18,25 @@ extension LocationProvider {
     /// The client can be replaced with test doubles for unit testing.
     @MainActor
     struct Client {
-        /// Provides an asynchronous stream of location updates.
+        /// Provides an asynchronous sequence of location updates.
         ///
         /// - Parameter liveConfiguration: The CoreLocation live update configuration preset.
-        /// - Returns: An `AsyncThrowingStream` of `LocationUpdate` instances representing changes in location
-        ///   or authorization status.
+        /// - Returns: A sequence of `LocationUpdate` instances representing changes in location
+        ///   or authorization status. Cancelling the task that iterates it stops the updates.
         ///
         /// - Throws: The stream may throw the following errors:
         ///   - `CLError`: Core Location errors including:
         ///     - `.denied`: User denied location permissions (mapped to `GPSLocationError.authorizationDenied`)
         ///     - `.locationUnknown`: Unable to determine location (mapped to `GPSLocationError.locationUnavailable`)
         ///     - `.network`: Network-related failure (mapped to `GPSLocationError.locationUnavailable`)
-        ///   - `CancellationError`: When the stream is cancelled (filtered out, not surfaced to users)
+        ///   - `CancellationError`: When the iterating task is cancelled (not surfaced to users)
         ///   - Other system errors from CLLocationUpdate.liveUpdates()
         ///
-        /// - Important: This stream MUST propagate errors from CLLocationUpdate.liveUpdates() rather than
+        /// - Important: This sequence MUST propagate errors from CLLocationUpdate.liveUpdates() rather than
         ///   swallowing them. Authorization and hardware errors need to surface with specific, actionable
         ///   messages so users can understand and resolve permission/hardware issues (e.g., "Location access
         ///   denied" with Settings instructions vs generic "location not found").
-        var updates: @Sendable (CLLocationUpdate.LiveConfiguration) -> AsyncThrowingStream<LocationUpdate, Error>
+        var updates: @Sendable (CLLocationUpdate.LiveConfiguration) -> any AsyncSequence<any LocationUpdate, any Error>
         /// Converts a physical location to a human-readable place name.
         ///
         /// - Parameter location: The `CLLocation` to reverse geocode
@@ -55,40 +52,7 @@ extension LocationProvider {
         static func live() -> Self {
             Self(
                 updates: { liveConfiguration in
-                    logger.debug("updates called")
-                    return AsyncThrowingStream { continuation in
-                        let task = Task {
-                            do {
-                                for try await update in CLLocationUpdate.liveUpdates(liveConfiguration) {
-                                    if Task.isCancelled {
-                                        logger.debug("Task was cancelled, aborting location stream")
-                                        break
-                                    }
-                                    continuation.yield(update)
-                                }
-                                continuation.finish()
-                            } catch {
-                                if error is CancellationError {
-                                    logger.debug("Location stream cancelled")
-                                    continuation.finish()
-                                } else {
-                                    logger.error("Location stream error: \(error)")
-                                    continuation.finish(throwing: error)
-                                }
-                            }
-                        }
-                        continuation.onTermination = { @Sendable termination in
-                            switch termination {
-                            case .finished:
-                                logger.debug("Task was terminated due to being finished, cancelling location stream")
-                            case .cancelled:
-                                logger.debug("Task was terminated due to being cancelled, cancelling location stream")
-                            @unknown default:
-                                logger.warning("Task was cancelled with an unknown termination reason")
-                            }
-                            task.cancel()
-                        }
-                    }
+                    CLLocationUpdate.liveUpdates(liveConfiguration).map { $0 as any LocationUpdate }
                 },
                 reverseGeocodeLocation: { location in
                     guard let request = MKReverseGeocodingRequest(location: location) else {
