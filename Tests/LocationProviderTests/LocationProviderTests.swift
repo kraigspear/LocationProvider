@@ -274,7 +274,7 @@ struct LocationProviderTest {
             let providerConfiguration = LocationProvider.Configuration(
                 liveConfiguration: .fitness)
 
-            let provider = LocationProvider(client: client, configuration: providerConfiguration, clock: TestClock())
+            let provider = LocationProvider(client: client, configuration: providerConfiguration, clock: clock)
 
             _ = try await provider.gpsLocation()
         }
