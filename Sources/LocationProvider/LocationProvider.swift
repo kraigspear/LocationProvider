@@ -53,6 +53,9 @@ public final class LocationProvider {
     }
 
     /// Creates a new instance of LocationProvider with a custom client
+    ///
+    /// Internal so the client and clock stay free to change; apps test against a protocol of their own
+    /// (see the Testing article).
     /// - Parameters:
     ///   - client: The client to use for location services
     ///   - configuration: Timing parameters that control acquisition timeouts and grace periods.
