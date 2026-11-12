@@ -8,7 +8,7 @@ import Synchronization
 // MARK: - Logger
 
 /// Logger instance for debugging and tracking location-related operations.
-private let logger = Logger(subsystem: "com.spearware.location", category: "📍LocationProvider")
+let logger = Logger(subsystem: "com.spearware.location", category: "📍LocationProvider")
 
 // MARK: - LocationProvider
 
@@ -110,151 +110,73 @@ public final class LocationProvider {
 
     // MARK: - Private Methods
 
-    /// Retrieves the first available live location update.
+    /// Races the update stream against the acquisition timeout until `LocationAcquisition` decides.
     ///
-    /// This private method continuously monitors location updates until a valid location
-    /// is received or an error occurs. It handles various states including:
-    /// - Permission requests in progress
-    /// - Location availability
-    /// - Authorization status changes
-    ///
-    /// - Returns: The first valid `CLLocation` object received
-    /// - Throws: `GPSLocationError.notFound` if no valid location can be obtained,
-    ///          or other relevant `GPSLocationError` cases based on the update state
-    private func firstLiveUpdate(
+    /// - Returns: The first location the acquisition accepts
+    /// - Throws: The `GPSLocationError` the acquisition fails with
+    private func firstLiveUpdate<C: Clock<Duration>>(
         accuracyRequirement: AccuracyRequirement,
-        clock: some Clock<Duration>) async throws -> CLLocation
+        clock: C) async throws -> CLLocation
     {
         logger.debug("Starting live update monitoring")
 
-        let state = AcquisitionState(start: clock.now)
-        let configuration = configuration
+        let acquisition = SharedAcquisition(LocationAcquisition(
+            start: clock.now,
+            configuration: configuration,
+            accuracyRequirement: accuracyRequirement))
+        let liveConfiguration = configuration.liveConfiguration
         let updates = client.updates
 
-        let outcome = await withTaskGroup(of: RaceOutcome.self, returning: RaceOutcome.self) { group in
+        let decision = await withTaskGroup(of: LocationAcquisition<C.Instant>.Decision.self) { group in
             group.addTask {
                 do {
-                    for try await update in updates(configuration.liveConfiguration) {
-                        let now = clock.now
+                    for try await update in updates(liveConfiguration) {
                         logger.debug("Received location update: \(String(describing: update))")
-
-                        if update.authorizationRequestInProgress {
-                            logger.debug("Authorization request in progress; resetting timers")
-                            state.resetForAuthorization(now: now)
-                            continue
-                        }
-
-                        if let location = update.location {
-                            if update.accuracyLimited, !accuracyRequirement.acceptsReducedAccuracy {
-                                logger
-                                    .debug(
-                                        "Limited accuracy location received but precise accuracy required; continuing")
-                                state.setLastTransientError(.preciseLocationRequired)
-                                continue
-                            }
-                            logger.debug("Valid location found: \(String(describing: location))")
-                            return .location(location)
-                        }
-
-                        if let error = GPSLocationError(locationUpdate: update) {
-                            switch error {
-                            case .locationUnavailable:
-                                state.setLastTransientError(error)
-
-                                let elapsed = state.markLocationUnavailable(now: now)
-                                if let elapsed {
-                                    if elapsed >= configuration.locationUnavailableGracePeriod {
-                                        logger
-                                            .error(
-                                                "Location unavailable exceeded grace period (\(String(describing: elapsed))); throwing")
-                                        return .failure(error)
-                                    }
-
-                                    logger
-                                        .debug(
-                                            "Location unavailable within grace period (\(String(describing: elapsed))); awaiting recovery")
-                                } else {
-                                    logger.debug("Location unavailable reported; starting grace period")
-                                }
-
-                            default:
-                                logger.error("Non-transient location error encountered: \(String(describing: error))")
-                                return .failure(error)
-                            }
-                        } else {
-                            state.clearLocationUnavailable()
+                        let now = clock.now
+                        let decision = acquisition.withLock { $0.receive(update, at: now) }
+                        if decision != .continue {
+                            return decision
                         }
                     }
+                    return acquisition.withLock { $0.streamEnded() }
                 } catch {
-                    // Critical error handling: The stream threw an error (likely CLError from liveUpdates).
-                    // We MUST map these to specific GPSLocationError cases so users get actionable messages.
-                    // Example: CLError.denied → GPSLocationError.authorizationDenied → "Location access is disabled..."
-                    // Without this mapping, users would only see generic "Unable to determine location" errors
-                    // and wouldn't know they need to fix permissions in Settings.
-                    logger.error("Location updates stream failed with error: \(String(describing: error))")
-
-                    // Map CLError and other known errors to our domain-specific errors
-                    if let mappedError = GPSLocationError(locationStreamError: error) {
-                        return .failure(mappedError)
-                    }
-
-                    // Fall back to the last transient error we saw (if any) or generic .notFound
-                    // This preserves context when the stream ends unexpectedly
-                    return .failure(state.currentTimeoutError())
+                    return acquisition.withLock { $0.streamFailed(error) }
                 }
-
-                logger.error("Location updates stream ended without valid location")
-                return .failure(state.currentTimeoutError())
             }
 
             group.addTask {
                 do {
-                    var observedStart = state.currentAcquisitionStart()
-
                     while true {
-                        let deadline = observedStart.advanced(by: configuration.locationAcquisitionTimeout)
+                        let deadline = acquisition.withLock { $0.deadline }
                         try await clock.sleep(until: deadline, tolerance: .zero)
-
-                        let currentStart = state.currentAcquisitionStart()
-                        if currentStart != observedStart {
-                            observedStart = currentStart
-                            continue
+                        let now = clock.now
+                        let decision = acquisition.withLock { $0.deadlineReached(at: now) }
+                        if decision != .continue {
+                            return decision
                         }
-
-                        let timeoutError = state.currentTimeoutError()
-                        let elapsed = observedStart.duration(to: clock.now)
-                        logger
-                            .error(
-                                "Location acquisition timed out after \(String(describing: elapsed)); throwing \(String(describing: timeoutError))")
-                        return .failure(timeoutError)
                     }
                 } catch {
-                    return .failure(error)
+                    // Cancelled: the timeout has no decision to give; the update loop still returns one.
+                    return .continue
                 }
             }
 
             defer { group.cancelAll() }
 
-            while let result = await group.next() {
-                switch result {
-                case let .location(location):
-                    return .location(location)
-                case let .failure(error):
-                    if error is CancellationError {
-                        continue
-                    }
-                    return .failure(error)
-                }
+            for await decision in group where decision != .continue {
+                return decision
             }
-
-            return .failure(state.currentTimeoutError())
+            return .continue
         }
 
-        switch outcome {
-        case let .location(location):
+        switch decision {
+        case let .succeed(location):
             return location
-        case let .failure(error):
+        case let .fail(error):
             throw error
+        case .continue:
+            // Unreachable: the update loop always returns a final decision.
+            throw GPSLocationError.notFound
         }
     }
 }
@@ -307,67 +229,18 @@ public extension LocationProvider {
     }
 }
 
-private extension LocationProvider.AccuracyRequirement {
-    /// Indicates whether the requirement accepts reduced accuracy locations for approximate mode.
-    var acceptsReducedAccuracy: Bool {
-        switch self {
-        case .any:
-            true
-        case .precise:
-            false
-        }
-    }
-}
-
-private enum RaceOutcome {
-    case location(CLLocation)
-    case failure(Error)
-}
-
-/// Timing state shared by the update loop and the timeout task.
+/// One request's `LocationAcquisition`, shared by the update loop and the timeout task.
 ///
-/// A lock rather than an actor: every access is a short synchronous read or write, so an actor's
-/// suspension points would protect nothing more. A check that decides a write stays in one `withLock`.
-private final class AcquisitionState<Instant: InstantProtocol<Duration>>: Sendable {
-    private struct Values {
-        var acquisitionWindowStart: Instant
-        var locationUnavailableStart: Instant?
-        var lastTransientError: GPSLocationError?
+/// A lock rather than an actor: every access is a short synchronous call, so an actor's
+/// suspension points would protect nothing more. Each decision is made inside one `withLock`.
+private final class SharedAcquisition<Instant: InstantProtocol<Duration>>: Sendable {
+    private let acquisition: Mutex<LocationAcquisition<Instant>>
+
+    init(_ acquisition: LocationAcquisition<Instant>) {
+        self.acquisition = Mutex(acquisition)
     }
 
-    private let values: Mutex<Values>
-
-    init(start: Instant) {
-        values = Mutex(Values(acquisitionWindowStart: start))
-    }
-
-    func resetForAuthorization(now: Instant) {
-        values.withLock { $0 = Values(acquisitionWindowStart: now) }
-    }
-
-    func setLastTransientError(_ error: GPSLocationError?) {
-        values.withLock { $0.lastTransientError = error }
-    }
-
-    func markLocationUnavailable(now: Instant) -> Duration? {
-        values.withLock { values in
-            if let start = values.locationUnavailableStart {
-                return start.duration(to: now)
-            }
-            values.locationUnavailableStart = now
-            return nil
-        }
-    }
-
-    func clearLocationUnavailable() {
-        values.withLock { $0.locationUnavailableStart = nil }
-    }
-
-    func currentAcquisitionStart() -> Instant {
-        values.withLock { $0.acquisitionWindowStart }
-    }
-
-    func currentTimeoutError() -> GPSLocationError {
-        values.withLock { $0.lastTransientError ?? .notFound }
+    func withLock<Result: Sendable>(_ body: (inout LocationAcquisition<Instant>) -> Result) -> Result {
+        acquisition.withLock { body(&$0) }
     }
 }

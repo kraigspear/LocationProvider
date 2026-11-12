@@ -70,38 +70,6 @@ public enum GPSLocationError: LocalizedError, Sendable {
     /// leading to confusing failures.
     case preciseLocationRequired
 
-    /// Creates a GPS error from a location update's state.
-    ///
-    /// This initializer examines the boolean flags in a LocationUpdate to determine if an error
-    /// condition exists. We check flags in priority order to ensure users receive the most accurate
-    /// guidance when multiple error conditions are true.
-    ///
-    /// Priority ordering rationale:
-    /// 1. Authorization issues (restricted, denied, insufficient) checked first since they require
-    ///    explicit user action.
-    /// 2. Transient system issues (unavailable, session required) checked last since they may
-    ///    resolve without user intervention.
-    ///
-    /// - Parameter update: The location update containing state information
-    /// - Returns: A GPSLocationError if any error condition is detected, nil if the update is valid
-    init?(locationUpdate update: LocationUpdate) {
-        if update.authorizationDeniedGlobally || update.authorizationDenied {
-            self = .authorizationDenied
-        } else if update.authorizationRestricted {
-            self = .authorizationRestricted
-        } else if update.insufficientlyInUse {
-            self = .insufficientlyInUse
-            // Then check transient system issues
-        } else if update.locationUnavailable {
-            self = .locationUnavailable
-        } else if update.serviceSessionRequired {
-            self = .serviceSessionRequired
-        } else {
-            // No error condition detected - this is a valid update
-            return nil
-        }
-    }
-
     public var errorDescription: String? {
         switch self {
         case .authorizationDenied:
