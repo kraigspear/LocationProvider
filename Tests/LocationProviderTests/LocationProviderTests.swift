@@ -142,6 +142,30 @@ struct LocationProviderTest {
         }
     }
 
+    @Test("An update without the unavailable flag restarts the grace period")
+    func neutralUpdateRestartsGracePeriod() async throws {
+        // Given: unavailable at 0s and 8s, with a neutral update between them, in a 5s grace period
+        let expectedLocation = GPSLocation.statueOfLiberty.location
+        let clock = TestClock()
+        let client = LocationProvider.Client.test(
+            [
+                .update(MockLocationUpdate.locationNotAvailable()),
+                .advance(.seconds(4)),
+                .update(MockLocationUpdate()),
+                .advance(.seconds(4)),
+                .update(MockLocationUpdate.locationNotAvailable()),
+                .update(MockLocationUpdate(location: expectedLocation)),
+            ],
+            clock: clock)
+        let configuration = LocationProvider.Configuration(locationAcquisitionTimeout: .seconds(60))
+        let locationProvider = LocationProvider(client: client, configuration: configuration, clock: clock)
+
+        // When / Then: the second unavailable starts a new grace period instead of measuring 8s
+        let gPSLocation = try await locationProvider.gpsLocation()
+
+        #expect(gPSLocation.location == expectedLocation)
+    }
+
     @Test("Stream failure surfaces authorization denied")
     func streamFailureSurfacesAuthorizationDenied() async throws {
         let clock = TestClock()
