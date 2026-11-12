@@ -93,7 +93,7 @@ struct LocationAcquisition<Instant: InstantProtocol<Duration>>: Sendable {
     /// A stream that throws has ended, so even a transient error fails at once: no update can follow.
     func streamFailed(_ error: any Error) -> Decision {
         logger.error("Location updates stream failed with error: \(String(describing: error))")
-        return .fail(GPSLocationError(locationStreamError: error) ?? timeoutError)
+        return .fail(Self.error(thrownBy: error) ?? timeoutError)
     }
 
     func streamEnded() -> Decision {
@@ -119,6 +119,29 @@ struct LocationAcquisition<Instant: InstantProtocol<Duration>>: Sendable {
             .serviceSessionRequired
         } else {
             nil
+        }
+    }
+
+    /// The error a thrown stream error reports, or nil when it has nothing to tell the user.
+    private static func error(thrownBy error: any Error) -> GPSLocationError? {
+        if let gpsError = error as? GPSLocationError {
+            return gpsError
+        }
+        // Cancellation and non-location errors say nothing about why no location arrived.
+        guard let clError = error as? CLError else { return nil }
+
+        switch clError.code {
+        case .denied:
+            return .authorizationDenied
+        case .promptDeclined:
+            // The user declined the prompt to upgrade approximate location to precise.
+            return .preciseLocationRequired
+        case .locationUnknown, .network, .deferredAccuracyTooLow, .deferredDistanceFiltered, .deferredCanceled,
+             .deferredFailed, .headingFailure:
+            return .locationUnavailable
+        default:
+            // Errors such as ranging failures don't concern a GPS fix.
+            return nil
         }
     }
 }

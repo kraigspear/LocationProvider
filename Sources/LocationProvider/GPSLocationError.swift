@@ -5,7 +5,6 @@
 //  Created by Kraig Spear on 1/25/25.
 //
 
-import CoreLocation
 import Foundation
 
 /// Represents possible errors that can occur during GPS location operations.
@@ -87,56 +86,6 @@ public enum GPSLocationError: LocalizedError, Sendable {
         case .preciseLocationRequired:
             // Settings lists location permissions under the host app, so use Bundle.main.
             "Precise location is required but only approximate location is available. Enable Precise Location in Settings > Privacy & Security > Location Services > \(Bundle.main.displayName) to share your exact location."
-        }
-    }
-}
-
-extension GPSLocationError {
-    /// Maps errors from the Core Location stream to domain-specific GPS errors.
-    ///
-    /// This initializer is critical for proper error propagation from CLLocationUpdate.liveUpdates().
-    /// Without this mapping, users would receive generic "location not found" errors instead of
-    /// actionable messages like "Location access denied" that tell them how to fix the problem.
-    ///
-    /// - Parameter error: The error thrown by CLLocationUpdate.liveUpdates() or the stream itself
-    /// - Returns: A mapped GPSLocationError, or nil for errors that should not surface to users
-    init?(locationStreamError error: Error) {
-        // If already a GPSLocationError, preserve it as-is
-        if let gpsError = error as? GPSLocationError {
-            self = gpsError
-            return
-        }
-
-        // CancellationError is expected when tasks are cancelled (e.g., view dismissal).
-        // We return nil to avoid surfacing this as an error to users since it's normal behavior.
-        if error is CancellationError {
-            return nil
-        }
-
-        // Only handle CLError types - other errors aren't location-specific
-        guard let clError = error as? CLError else {
-            return nil
-        }
-
-        switch clError.code {
-        case .denied:
-            self = .authorizationDenied
-        case .promptDeclined:
-            // User dismissed the "Precise Location" prompt without granting precise accuracy.
-            // This occurs when the app requests precise location but the user has approximate
-            // location enabled and chooses not to upgrade to precise when prompted by iOS.
-            // We map this to preciseLocationRequired to provide actionable guidance on how to
-            // enable precise location in Settings.
-            self = .preciseLocationRequired
-        case .locationUnknown, .network, .deferredAccuracyTooLow, .deferredDistanceFiltered, .deferredCanceled,
-             .deferredFailed, .headingFailure:
-            // These are all transient errors where location hardware/service is temporarily
-            // unable to determine position. We map them all to locationUnavailable since
-            // the user action is the same: wait and retry.
-            self = .locationUnavailable
-        default:
-            // Other CLError types (like .rangingDisabled) aren't relevant for GPS location
-            return nil
         }
     }
 }
