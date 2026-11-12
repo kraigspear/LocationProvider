@@ -25,6 +25,7 @@ final class TestClock: Clock, Sendable {
     }
 
     private struct RegistrationWaiter {
+        let id: UUID
         let count: Int
         let continuation: CheckedContinuation<Void, Never>
     }
@@ -32,7 +33,7 @@ final class TestClock: Clock, Sendable {
     private struct State {
         var now = Instant(offset: .zero)
         var sleepers: [UUID: Sleeper] = [:]
-        /// Sleeps cancelled before their continuation was stored; they resume throwing on registration.
+        /// Sleeps and waits cancelled before their continuation was stored; they resume at once on registration.
         var cancelledBeforeRegistration: Set<UUID> = []
         var registrationWaiters: [RegistrationWaiter] = []
 
@@ -48,6 +49,11 @@ final class TestClock: Clock, Sendable {
 
     var now: Instant {
         state.withLock { $0.now }
+    }
+
+    /// How many `waitForSleepers` calls are still waiting, so a test can cancel one known to be registered.
+    var registrationWaiterCount: Int {
+        state.withLock { $0.registrationWaiters.count }
     }
 
     var minimumResolution: Duration {
@@ -93,19 +99,35 @@ final class TestClock: Clock, Sendable {
     }
 
     /// Suspends until at least `count` sleeps are waiting on the clock, so a test can advance or
-    /// cancel knowing the sleep is registered.
+    /// cancel knowing the sleep is registered. Returns early when cancelled, so a count that is never
+    /// reached fails at the test's time limit instead of hanging.
     func waitForSleepers(_ count: Int = 1) async {
-        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            let isSatisfied = state.withLock { state -> Bool in
-                if state.sleepers.count >= count {
-                    return true
+        let id = UUID()
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                let isSatisfied = state.withLock { state -> Bool in
+                    if state.sleepers.count >= count || state.cancelledBeforeRegistration.remove(id) != nil {
+                        return true
+                    }
+                    state.registrationWaiters.append(RegistrationWaiter(
+                        id: id,
+                        count: count,
+                        continuation: continuation))
+                    return false
                 }
-                state.registrationWaiters.append(RegistrationWaiter(count: count, continuation: continuation))
-                return false
+                if isSatisfied {
+                    continuation.resume()
+                }
             }
-            if isSatisfied {
-                continuation.resume()
+        } onCancel: {
+            let waiter = state.withLock { state -> RegistrationWaiter? in
+                if let index = state.registrationWaiters.firstIndex(where: { $0.id == id }) {
+                    return state.registrationWaiters.remove(at: index)
+                }
+                state.cancelledBeforeRegistration.insert(id)
+                return nil
             }
+            waiter?.continuation.resume()
         }
     }
 

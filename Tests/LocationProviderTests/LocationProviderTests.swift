@@ -343,6 +343,33 @@ struct LocationProviderTest {
                 _ = try await provider.gpsLocation()
             }
         }
+
+        @Test("Permission prompt restarts the acquisition timeout")
+        func permissionPromptRestartsTimeout() async throws {
+            // Given: the prompt arrives 8s into a 10s timeout, and the stream then stalls at 16s
+            let clock = TestClock()
+            let client = LocationProvider.Client.test(
+                [
+                    .advance(.seconds(8)),
+                    .update(MockLocationUpdate.requestInProgress()),
+                    .advance(.seconds(8)),
+                    .stall,
+                ],
+                clock: clock)
+            let configuration = LocationProvider.Configuration(locationAcquisitionTimeout: .seconds(10))
+            let provider = LocationProvider(client: client, configuration: configuration, clock: clock)
+
+            let request = Task { try await provider.gpsLocation() }
+
+            // When: past the original 10s deadline, the timeout re-sleeps beside the stalled stream
+            await clock.waitForSleepers(2)
+            clock.advance(by: .seconds(2))
+
+            // Then: it fires at 18s, 10s after the prompt
+            await #expect(throws: GPSLocationError.notFound) {
+                _ = try await request.value
+            }
+        }
     }
 
     @MainActor

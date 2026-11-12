@@ -1,6 +1,7 @@
 import Testing
 
 /// The provider tests rely on `TestClock` resuming each sleep exactly once, so its handoffs get their own tests.
+/// A broken resume path hangs these tests rather than failing them; `test.sh` turns that hang into a failure.
 @Suite(.timeLimit(.minutes(1)))
 struct TestClockTests {
     @Test("A sleep whose deadline has already passed returns immediately")
@@ -79,6 +80,55 @@ struct TestClockTests {
             break
         case let .failure(error):
             #expect(error is CancellationError)
+        }
+    }
+
+    @Test("Cancelling a registered wait for sleepers returns it without a sleeper")
+    func cancelRegisteredWaitForSleepersReturns() async {
+        let clock = TestClock()
+        let waitTask = Task { await clock.waitForSleepers() }
+        await waitForRegistration(on: clock)
+
+        waitTask.cancel()
+
+        await waitTask.value
+    }
+
+    @Test("A wait for sleepers started in an already-cancelled task returns without a sleeper")
+    func cancelBeforeRegistrationWaitForSleepersReturns() async {
+        let clock = TestClock()
+        let waitTask = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            await clock.waitForSleepers()
+        }
+
+        await waitTask.value
+    }
+
+    @Test("Cancel racing a new sleeper resumes the wait exactly once", arguments: 0 ..< 200)
+    func cancelRacingSleeperResumesWaitOnce(iteration _: Int) async {
+        // Given: a registered wait for one sleeper
+        let clock = TestClock()
+        let waitTask = Task { await clock.waitForSleepers() }
+        await waitForRegistration(on: clock)
+
+        // When: cancellation and the satisfying sleep arrive together
+        let sleepTask = Task { try await clock.sleep(until: .init(offset: .seconds(5))) }
+        Task { waitTask.cancel() }
+
+        // Then: it finishes once, either way, and later sleepers don't resume it again;
+        // a double resume traps the checked continuation
+        await waitTask.value
+        let secondSleepTask = Task { try await clock.sleep(until: .init(offset: .seconds(5))) }
+        await clock.waitForSleepers(2)
+        sleepTask.cancel()
+        secondSleepTask.cancel()
+    }
+
+    /// Suspends until `clock` holds a `waitForSleepers` waiter, so a test can cancel one known to be registered.
+    private func waitForRegistration(on clock: TestClock) async {
+        while clock.registrationWaiterCount == 0 {
+            await Task.yield()
         }
     }
 }

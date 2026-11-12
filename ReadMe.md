@@ -361,6 +361,8 @@ No third-party dependencies are required.
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+Run the unit tests with `./test.sh`, which passes its arguments to `swift test`. It fails a run that hangs, which Swift Testing's time limit cannot stop when a test waits on a continuation that never resumes.
+
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
