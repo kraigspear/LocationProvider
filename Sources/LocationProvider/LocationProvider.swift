@@ -325,6 +325,9 @@ private enum RaceOutcome {
 }
 
 /// Timing state shared by the update loop and the timeout task.
+///
+/// A lock rather than an actor: every access is a short synchronous read or write, so an actor's
+/// suspension points would protect nothing more. A check that decides a write stays in one `withLock`.
 private final class AcquisitionState<Instant: InstantProtocol<Duration>>: Sendable {
     private struct Values {
         var acquisitionWindowStart: Instant
