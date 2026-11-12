@@ -3,6 +3,7 @@
 @preconcurrency import CoreLocation
 import Foundation
 import os
+import Synchronization
 
 // MARK: - Logger
 
@@ -139,7 +140,7 @@ public final class LocationProvider {
 
                         if update.authorizationRequestInProgress {
                             logger.debug("Authorization request in progress; resetting timers")
-                            await state.resetForAuthorization(now: now)
+                            state.resetForAuthorization(now: now)
                             continue
                         }
 
@@ -148,7 +149,7 @@ public final class LocationProvider {
                                 logger
                                     .debug(
                                         "Limited accuracy location received but precise accuracy required; continuing")
-                                await state.setLastTransientError(.preciseLocationRequired)
+                                state.setLastTransientError(.preciseLocationRequired)
                                 continue
                             }
                             logger.debug("Valid location found: \(String(describing: location))")
@@ -158,9 +159,9 @@ public final class LocationProvider {
                         if let error = GPSLocationError(locationUpdate: update) {
                             switch error {
                             case .locationUnavailable:
-                                await state.setLastTransientError(error)
+                                state.setLastTransientError(error)
 
-                                let elapsed = await state.markLocationUnavailable(now: now)
+                                let elapsed = state.markLocationUnavailable(now: now)
                                 if let elapsed {
                                     if elapsed >= configuration.locationUnavailableGracePeriod {
                                         logger
@@ -181,7 +182,7 @@ public final class LocationProvider {
                                 return .failure(error)
                             }
                         } else {
-                            await state.clearLocationUnavailable()
+                            state.clearLocationUnavailable()
                         }
                     }
                 } catch {
@@ -199,28 +200,28 @@ public final class LocationProvider {
 
                     // Fall back to the last transient error we saw (if any) or generic .notFound
                     // This preserves context when the stream ends unexpectedly
-                    return await .failure(state.currentTimeoutError())
+                    return .failure(state.currentTimeoutError())
                 }
 
                 logger.error("Location updates stream ended without valid location")
-                return await .failure(state.currentTimeoutError())
+                return .failure(state.currentTimeoutError())
             }
 
             group.addTask {
                 do {
-                    var observedStart = await state.currentAcquisitionStart()
+                    var observedStart = state.currentAcquisitionStart()
 
                     while true {
                         let deadline = observedStart.advanced(by: configuration.locationAcquisitionTimeout)
                         try await clock.sleep(until: deadline, tolerance: .zero)
 
-                        let currentStart = await state.currentAcquisitionStart()
+                        let currentStart = state.currentAcquisitionStart()
                         if currentStart != observedStart {
                             observedStart = currentStart
                             continue
                         }
 
-                        let timeoutError = await state.currentTimeoutError()
+                        let timeoutError = state.currentTimeoutError()
                         let elapsed = observedStart.duration(to: clock.now)
                         logger
                             .error(
@@ -246,7 +247,7 @@ public final class LocationProvider {
                 }
             }
 
-            return await .failure(state.currentTimeoutError())
+            return .failure(state.currentTimeoutError())
         }
 
         switch outcome {
@@ -323,42 +324,47 @@ private enum RaceOutcome {
     case failure(Error)
 }
 
-private actor AcquisitionState<Instant: InstantProtocol<Duration>> {
-    private var acquisitionWindowStart: Instant
-    private var locationUnavailableStart: Instant?
-    private var lastTransientError: GPSLocationError?
+/// Timing state shared by the update loop and the timeout task.
+private final class AcquisitionState<Instant: InstantProtocol<Duration>>: Sendable {
+    private struct Values {
+        var acquisitionWindowStart: Instant
+        var locationUnavailableStart: Instant?
+        var lastTransientError: GPSLocationError?
+    }
+
+    private let values: Mutex<Values>
 
     init(start: Instant) {
-        acquisitionWindowStart = start
+        values = Mutex(Values(acquisitionWindowStart: start))
     }
 
     func resetForAuthorization(now: Instant) {
-        acquisitionWindowStart = now
-        locationUnavailableStart = nil
-        lastTransientError = nil
+        values.withLock { $0 = Values(acquisitionWindowStart: now) }
     }
 
     func setLastTransientError(_ error: GPSLocationError?) {
-        lastTransientError = error
+        values.withLock { $0.lastTransientError = error }
     }
 
     func markLocationUnavailable(now: Instant) -> Duration? {
-        if let start = locationUnavailableStart {
-            return start.duration(to: now)
+        values.withLock { values in
+            if let start = values.locationUnavailableStart {
+                return start.duration(to: now)
+            }
+            values.locationUnavailableStart = now
+            return nil
         }
-        locationUnavailableStart = now
-        return nil
     }
 
     func clearLocationUnavailable() {
-        locationUnavailableStart = nil
+        values.withLock { $0.locationUnavailableStart = nil }
     }
 
     func currentAcquisitionStart() -> Instant {
-        acquisitionWindowStart
+        values.withLock { $0.acquisitionWindowStart }
     }
 
     func currentTimeoutError() -> GPSLocationError {
-        lastTransientError ?? .notFound
+        values.withLock { $0.lastTransientError ?? .notFound }
     }
 }
