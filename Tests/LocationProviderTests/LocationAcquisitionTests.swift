@@ -224,10 +224,28 @@ struct LocationAcquisitionTests {
             arguments: [
                 (CLError(.denied) as any Error, GPSLocationError.authorizationDenied),
                 (CLError(.promptDeclined), .preciseLocationRequired),
+                (CLError(.locationUnknown), .locationUnavailable),
+                (CLError(.network), .locationUnavailable),
+                (CLError(.deferredAccuracyTooLow), .locationUnavailable),
+                (CLError(.deferredDistanceFiltered), .locationUnavailable),
+                (CLError(.deferredCanceled), .locationUnavailable),
+                (CLError(.deferredFailed), .locationUnavailable),
+                (CLError(.headingFailure), .locationUnavailable),
                 (GPSLocationError.serviceSessionRequired, .serviceSessionRequired),
             ])
         func streamErrorMaps(error: any Error, expectedError: GPSLocationError) {
             #expect(makeAcquisition().streamFailed(error) == .fail(expectedError))
+        }
+
+        @Test(
+            "A stream error with no mapping and no transient error fails with notFound",
+            arguments: [
+                CancellationError() as any Error,
+                CLError(.rangingUnavailable),
+                URLError(.timedOut),
+            ])
+        func unmappedStreamErrorIsNotFound(error: any Error) {
+            #expect(makeAcquisition().streamFailed(error) == .fail(.notFound))
         }
 
         @Test("A stream error with no mapping fails with the last transient error")
