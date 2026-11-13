@@ -37,12 +37,12 @@ public enum GPSLocationError: LocalizedError {
     case authorizationDenied       // Location access denied (app or system-wide)
     case insufficientlyInUse       // Need "Always" but have "When In Use"
     case locationUnavailable       // GPS temporarily unavailable
-    case serviceSessionRequired    // Find My session needed
+    case serviceSessionRequired    // App requires a CLServiceSession but holds none
     case preciseLocationRequired   // User has approximate location but precise is needed
 }
 ```
 
-> **Important**: Each error now provides specific, user-friendly messages through `localizedDescription`. These messages tell users exactly what's wrong and how to fix it, eliminating the need for generic error handling.
+> **Important**: Each error provides a user-facing message through `localizedDescription`. When the user can fix the problem, the message says how; when only the app can, it names no fix. ``GPSLocationError/recovery`` tells your UI which action to offer.
 
 ## Choosing a Recovery
 
