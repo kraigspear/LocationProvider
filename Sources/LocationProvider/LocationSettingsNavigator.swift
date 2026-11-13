@@ -13,7 +13,7 @@
 
 /// Opens location-specific system settings to help users manage location permissions.
 ///
-/// When location permission errors occur (e.g., `GPSLocationError.authorizationDenied`),
+/// When an error's ``GPSLocationError/recovery`` is ``GPSLocationError/Recovery/openSettings``,
 /// users need a clear path to fix the problem. This function opens the appropriate settings
 /// screen where location permissions can be managed.
 ///
@@ -22,7 +22,7 @@
 /// ```swift
 /// do {
 ///     let location = try await locationProvider.gpsLocation()
-/// } catch GPSLocationError.authorizationDenied {
+/// } catch where error.recovery == .openSettings {
 ///     // Show alert with button to open settings
 ///     Button("Open Location Settings") {
 ///         Task {

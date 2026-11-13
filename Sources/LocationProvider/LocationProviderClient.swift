@@ -24,18 +24,11 @@ extension LocationProvider {
         /// - Returns: A sequence of `LocationUpdate` instances representing changes in location
         ///   or authorization status. Cancelling the task that iterates it stops the updates.
         ///
-        /// - Throws: The stream may throw the following errors:
-        ///   - `CLError`: Core Location errors including:
-        ///     - `.denied`: User denied location permissions (mapped to `GPSLocationError.authorizationDenied`)
-        ///     - `.locationUnknown`: Unable to determine location (mapped to `GPSLocationError.locationUnavailable`)
-        ///     - `.network`: Network-related failure (mapped to `GPSLocationError.locationUnavailable`)
-        ///   - `CancellationError`: When the iterating task is cancelled (not surfaced to users)
-        ///   - Other system errors from CLLocationUpdate.liveUpdates()
+        /// - Throws: `CLError` from `CLLocationUpdate.liveUpdates()`, or `CancellationError` when the iterating
+        ///   task is cancelled. `LocationAcquisition` classifies each into a `GPSLocationError`.
         ///
-        /// - Important: This sequence MUST propagate errors from CLLocationUpdate.liveUpdates() rather than
-        ///   swallowing them. Authorization and hardware errors need to surface with specific, actionable
-        ///   messages so users can understand and resolve permission/hardware issues (e.g., "Location access
-        ///   denied" with Settings instructions vs generic "location not found").
+        /// - Important: Propagate errors from `CLLocationUpdate.liveUpdates()` rather than swallowing them, so
+        ///   authorization failures reach the caller as their own `GPSLocationError` instead of a timeout.
         var updates: @Sendable (CLLocationUpdate.LiveConfiguration) -> any AsyncSequence<any LocationUpdate, any Error>
         /// Converts a physical location to a human-readable place name.
         ///

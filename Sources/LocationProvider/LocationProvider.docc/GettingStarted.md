@@ -54,9 +54,8 @@ do {
     print("Current location: \(location.name)")
     print("Coordinates: \(location.location.coordinate.latitude), \(location.location.coordinate.longitude)")
 } catch {
-    // LocationProvider provides specific, actionable error messages
+    // localizedDescription is written for the user; recovery says what they can do
     print("Failed to get location: \(error.localizedDescription)")
-    // Example output: "Location access is disabled for this app. You can enable it in Settings > Privacy > Location Services."
 }
 ```
 
@@ -66,8 +65,6 @@ When you call `gpsLocation()`, LocationProvider returns a ``GPSLocation`` object
 
 - **`name`**: A human-readable location name (e.g., "San Francisco") or `"GPS"` if reverse geocoding fails
 - **`location`**: The raw `CLLocation` object with coordinates, accuracy, and timestamp
-
-> **Important**: LocationProvider now provides specific, actionable error messages when location requests fail. Instead of generic "location not found" errors, you'll get clear guidance like "Location access is disabled for this app. You can enable it in Settings > Privacy > Location Services."
 
 ```swift
 let gpsLocation = try await locationProvider.gpsLocation()
@@ -91,20 +88,11 @@ When you call `gpsLocation()`, LocationProvider:
 
 1. **Requests Permissions**: Automatically handles location authorization if needed
 2. **Gets Location**: Waits for the first accurate GPS reading from Core Location's live updates
-3. **Error Handling**: Maps Core Location errors to specific, user-friendly messages
+3. **Error Handling**: Reports any failure as a ``GPSLocationError`` with a user-facing message and a recovery
 4. **Reverse Geocodes**: Converts coordinates to a readable place name
 5. **Returns Result**: Provides both coordinates and human-readable name
 
 The entire process is designed to be quick and battery-efficient, stopping location services once a result is obtained.
-
-### Improved Error Handling
-
-LocationProvider surfaces Core Location errors with specific, actionable messages:
-
-- **Authorization errors** are detected immediately and provide Settings instructions
-- **Technical failures** distinguish between temporary GPS issues and permission problems
-- **System-wide vs app-specific** permission issues are clearly differentiated
-- **Cancellation errors** are filtered out as they represent normal app behavior
 
 ## Handling the Async Nature
 
@@ -130,9 +118,7 @@ class LocationViewModel {
         do {
             currentLocation = try await locationProvider.gpsLocation()
         } catch {
-            // LocationProvider provides specific, actionable error messages
             print("Location error: \(error.localizedDescription)")
-            // Example: "Location access is disabled for this app. You can enable it in Settings > Privacy > Location Services."
         }
     }
 }

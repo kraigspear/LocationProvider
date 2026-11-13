@@ -4,16 +4,7 @@ Understand and manage location authorization states in your app.
 
 ## Overview
 
-LocationProvider automatically handles location permission requests and provides specific, actionable error messages when authorization fails. This guide explains how location permissions work and how to provide a great user experience using the improved error handling that tells users exactly how to fix permission issues.
-
-## Key Improvements in Error Handling
-
-LocationProvider now provides specific, actionable error messages instead of generic "location not found" errors:
-
-- **Before**: All authorization failures resulted in vague "Unable to determine location" messages
-- **After**: Clear messages like "Location access is disabled for this app. You can enable it in Settings > Privacy > Location Services"
-
-This critical improvement means users understand exactly what's wrong and how to fix it, dramatically improving the user experience when permission issues occur.
+LocationProvider requests location permission when needed and reports a refusal as a ``GPSLocationError``. This guide explains how location permissions work and how to build your permission UI from the error's message and ``GPSLocationError/recovery``.
 
 ## Permission Flow
 
@@ -32,16 +23,12 @@ do {
     let location = try await locationProvider.gpsLocation()
     print("Location received: \(location.name)")
 } catch {
-    // Now get specific, actionable error messages
     print("Location error: \(error.localizedDescription)")
-    // Example: "Location access is disabled for this app. You can enable it in Settings > Privacy > Location Services."
     handleLocationError(error)
 }
 ```
 
 ## Permission States
-
-LocationProvider recognizes several authorization states through ``GPSLocationError``:
 
 ### Successful States
 
@@ -52,61 +39,23 @@ let location = try await locationProvider.gpsLocation()
 
 ### Error States
 
-```swift
-do {
-    let location = try await locationProvider.gpsLocation()
-} catch GPSLocationError.authorizationDenied {
-    // Location access denied (app-level or system-wide)
-    showLocationPermissionAlert()
-} catch GPSLocationError.authorizationRestricted {
-    // Location access restricted by parental controls
-    showRestrictedAlert()
-} catch GPSLocationError.insufficientlyInUse {
-    // Need "Always" permission but only have "When In Use"
-    showInsufficientPermissionAlert()
-}
-```
-
-## Handling Specific Permission Scenarios
-
-### Location Permission Denied
-
-When users deny location access or Location Services are disabled:
+A permission refusal surfaces as ``GPSLocationError/authorizationDenied``, ``GPSLocationError/authorizationRestricted``, ``GPSLocationError/insufficientlyInUse``, or ``GPSLocationError/preciseLocationRequired``. You rarely need to tell them apart: each error's ``GPSLocationError/recovery`` says whether a setting the user controls can fix it (``GPSLocationError/Recovery/openSettings``) or nothing the user can change will (``GPSLocationError/Recovery/none``). See <doc:ErrorHandling#Choosing-a-Recovery>.
 
 ```swift
-func handleAuthorizationDenied() {
-    // LocationProvider provides the exact message to show users
+func showPermissionAlert(for error: GPSLocationError) {
     let alert = UIAlertController(
-        title: "Location Access Needed",
-        message: GPSLocationError.authorizationDenied.localizedDescription,
-        // This will be: "Location access is not available. Enable location in Settings > Privacy & Security > Location Services."
+        title: "Location Unavailable",
+        message: error.localizedDescription,
         preferredStyle: .alert
     )
 
-    alert.addAction(UIAlertAction(title: "Settings", style: .default) { _ in
-        if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
-            UIApplication.shared.open(settingsUrl)
-        }
-    })
+    if error.recovery == .openSettings {
+        alert.addAction(UIAlertAction(title: "Open Settings", style: .default) { _ in
+            Task { await openLocationSettings() }
+        })
+    }
 
-    alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-    present(alert, animated: true)
-}
-```
-
-### Restricted Access
-
-When location access is restricted by device management:
-
-```swift
-func handleRestrictedAccess() {
-    let alert = UIAlertController(
-        title: "Location Access Restricted",
-        message: "Location access is restricted by device management settings. Contact your administrator for assistance.",
-        preferredStyle: .alert
-    )
-
-    alert.addAction(UIAlertAction(title: "OK", style: .default))
+    alert.addAction(UIAlertAction(title: "OK", style: .cancel))
     present(alert, animated: true)
 }
 ```
@@ -129,16 +78,11 @@ func showPreciseLocationExplanation() {
     let alert = UIAlertController(
         title: "Enable Precise Location",
         message: GPSLocationError.preciseLocationRequired.localizedDescription,
-        // Will be: "Precise location is required but only approximate location is available.
-        // Enable Precise Location in Settings > Privacy & Security > Location Services >
-        // [App Name] to share your exact location."
         preferredStyle: .alert
     )
 
     alert.addAction(UIAlertAction(title: "Open Settings", style: .default) { _ in
-        if let url = URL(string: UIApplication.openSettingsURLString) {
-            UIApplication.shared.open(url)
-        }
+        Task { await openLocationSettings() }
     })
 
     alert.addAction(UIAlertAction(title: "Use Approximate", style: .cancel) { _ in
@@ -157,7 +101,7 @@ func showPreciseLocationExplanation() {
 }
 ```
 
-> **Important**: When you request `.precise` accuracy and the user has approximate location enabled, iOS shows a system prompt asking to upgrade to precise location. If the user dismisses this prompt, `CLError.promptDeclined` is automatically mapped to `GPSLocationError.preciseLocationRequired`.
+> **Important**: When you request `.precise` accuracy and the user has approximate location enabled, iOS shows a system prompt asking to upgrade to precise location. If the user dismisses this prompt, the request throws ``GPSLocationError/preciseLocationRequired``.
 
 > **Best Practice**: Only request `.precise` accuracy when your feature genuinely requires it:
 > - **Needs Precise**: Navigation, geo-fencing, delivery tracking, location sharing, fitness tracking
@@ -190,20 +134,16 @@ struct LocationPermissionView: View {
             }
         }
         .alert("Location Permission", isPresented: $showingPermissionAlert) {
-            switch permissionError {
-            case .authorizationDenied:
+            if permissionError?.recovery == .openSettings {
                 Button("Settings") {
-                    openAppSettings()
+                    Task { await openLocationSettings() }
                 }
                 Button("Cancel", role: .cancel) {}
-            default:
+            } else {
                 Button("OK") {}
             }
         } message: {
-            // LocationProvider provides clear, actionable error messages
             Text(permissionError?.localizedDescription ?? "")
-            // Example:
-            // "Location access is not available. Enable location in Settings > Privacy & Security > Location Services."
         }
     }
 
@@ -215,63 +155,6 @@ struct LocationPermissionView: View {
             showingPermissionAlert = true
         }
     }
-
-    private func openAppSettings() {
-        if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
-            UIApplication.shared.open(settingsUrl)
-        }
-    }
-}
-```
-
-## Migration from Previous Versions
-
-If you're updating from an earlier version of LocationProvider, you'll benefit from these improvements automatically:
-
-### Before (Generic Errors)
-```swift
-// Old behavior: All permission errors were generic
-catch {
-    print("Unable to determine location")  // Not helpful to users
-}
-```
-
-### After (Specific Errors)
-```swift
-// New behavior: Specific, actionable error messages
-catch {
-    print(error.localizedDescription)
-    // "Location access is disabled for this app. You can enable it in Settings > Privacy > Location Services."
-}
-```
-
-### Simplified Error Handling
-
-You can now use the error messages directly without crafting your own:
-
-```swift
-func showLocationError(_ error: GPSLocationError) {
-    // Just use the provided error message - it's now user-friendly and actionable
-    let alert = UIAlertController(
-        title: "Location Error",
-        message: error.localizedDescription,
-        preferredStyle: .alert
-    )
-
-    // Add appropriate actions based on error type
-    switch error {
-    case .authorizationDenied:
-        alert.addAction(UIAlertAction(title: "Settings", style: .default) { _ in
-            openAppSettings()
-        })
-    default:
-        alert.addAction(UIAlertAction(title: "Try Again", style: .default) { _ in
-            Task { await requestLocation() }
-        })
-    }
-
-    alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-    present(alert, animated: true)
 }
 ```
 
@@ -368,9 +251,10 @@ struct LocationAwareView: View {
 
 ### 3. Retry Mechanisms
 
-Allow users to retry location requests after fixing permission issues:
+Ask again when the cause may have cleared: on the user's request for ``GPSLocationError/Recovery/retry``, and when the app returns to the foreground for ``GPSLocationError/Recovery/openSettings``, since the user may have changed the setting.
 
 ```swift
+@MainActor
 @Observable
 class LocationManager {
     var location: GPSLocation?
@@ -391,18 +275,15 @@ class LocationManager {
         }
     }
 
+    /// Shows a Try Again button.
     var canRetry: Bool {
-        guard let error = lastError else { return false }
+        lastError?.recovery == .retry
+    }
 
-        switch error {
-        case .authorizationDenied:
-            return true // User might have changed settings
-        case .locationUnavailable, .notFound:
-            return true // Might be temporary
-        case .authorizationRestricted:
-            return false // Can't be changed by user
-        default:
-            return true
+    /// Call when the scene becomes active, in case the user fixed the setting.
+    func sceneDidBecomeActive() async {
+        if lastError?.recovery == .openSettings {
+            await requestLocation()
         }
     }
 }
