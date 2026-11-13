@@ -119,7 +119,7 @@ import LocationProvider
 
 do {
     let location = try await provider.gpsLocation()
-} catch let error as GPSLocationError where error.recovery == .openSettings {
+} catch where error.recovery == .openSettings {
     // Drives an alert whose button calls openLocationSettings()
     settingsError = error
 } catch {
@@ -164,7 +164,7 @@ To test code that uses `LocationProvider`, put it behind a protocol your app own
 ```swift
 @MainActor
 protocol LocationProviding {
-    func gpsLocation(accuracyRequirement: LocationProvider.AccuracyRequirement) async throws -> GPSLocation
+    func gpsLocation(accuracyRequirement: LocationProvider.AccuracyRequirement) async throws(GPSLocationError) -> GPSLocation
 }
 
 extension LocationProvider: LocationProviding {}
@@ -224,10 +224,8 @@ struct LocationView: View {
 
         do {
             location = try await locationProvider.gpsLocation()
-        } catch let error as GPSLocationError {
-            self.error = error
         } catch {
-            // Handle unexpected errors
+            self.error = error
         }
     }
 }

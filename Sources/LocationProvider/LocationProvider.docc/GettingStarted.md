@@ -129,13 +129,10 @@ class LocationViewModel {
 
         do {
             currentLocation = try await locationProvider.gpsLocation()
-        } catch let error as GPSLocationError {
+        } catch {
             // LocationProvider provides specific, actionable error messages
             print("Location error: \(error.localizedDescription)")
             // Example: "Location access is disabled for this app. You can enable it in Settings > Privacy > Location Services."
-        } catch {
-            // Handle unexpected errors
-            print("Unexpected error: \(error)")
         }
     }
 }
@@ -159,13 +156,10 @@ struct ContentView: View {
         .task {
             do {
                 location = try await locationProvider.gpsLocation()
-            } catch let error as GPSLocationError {
+            } catch {
                 // LocationProvider provides user-friendly error messages
                 print("Location error: \(error.localizedDescription)")
                 // Handle error appropriately (see Error Handling guide)
-            } catch {
-                // Handle unexpected errors
-                print("Unexpected error: \(error)")
             }
         }
     }

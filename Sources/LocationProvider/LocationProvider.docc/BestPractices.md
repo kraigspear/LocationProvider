@@ -365,10 +365,8 @@ struct GracefulLocationView: View {
         do {
             location = try await LocationProvider().gpsLocation()
             error = nil
-        } catch let locationError as GPSLocationError {
-            error = locationError
         } catch {
-            error = .notFound
+            self.error = error
         }
     }
 }

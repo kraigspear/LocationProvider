@@ -90,10 +90,8 @@ struct AutoLocationView: View {
         error = nil
         do {
             location = try await LocationProvider().gpsLocation()
-        } catch let locationError as GPSLocationError {
-            error = locationError
         } catch {
-            error = .notFound
+            self.error = error
         }
     }
 }
@@ -126,10 +124,8 @@ class LocationManager {
 
         do {
             location = try await locationProvider.gpsLocation()
-        } catch let locationError as GPSLocationError {
-            error = locationError
         } catch {
-            error = .notFound
+            self.error = error
         }
     }
 
@@ -367,10 +363,8 @@ class AppLocationManager {
 
         do {
             currentLocation = try await locationProvider.gpsLocation()
-        } catch let locationError as GPSLocationError {
-            error = locationError
         } catch {
-            error = .notFound
+            self.error = error
         }
     }
 }

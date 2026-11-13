@@ -82,9 +82,11 @@ public final class LocationProvider {
     ///   is critical, such as navigation, fitness tracking, or location sharing. Note that `.precise` may increase
     ///   wait time and battery usage as it bypasses iOS's privacy-preserving reduced accuracy mode.
     /// - Returns: A `GPSLocation` object containing the location coordinates and optional name
-    /// - Throws: `GPSLocationError.notFound` if unable to get a location, or other location-related errors
+    /// - Throws: The `GPSLocationError` explaining why no location arrived. Cancelled while waiting for a fix, the
+    ///   request fails as a timeout would; once a fix arrives, it returns that location even if cancelled while
+    ///   reverse geocoding.
     public func gpsLocation(
-        accuracyRequirement: AccuracyRequirement = .any) async throws -> GPSLocation
+        accuracyRequirement: AccuracyRequirement = .any) async throws(GPSLocationError) -> GPSLocation
     {
         logger.debug("Starting GPS location request")
 
@@ -116,7 +118,7 @@ public final class LocationProvider {
     /// - Throws: The `GPSLocationError` the acquisition fails with
     private func firstLiveUpdate<C: Clock<Duration>>(
         accuracyRequirement: AccuracyRequirement,
-        clock: C) async throws -> CLLocation
+        clock: C) async throws(GPSLocationError) -> CLLocation
     {
         logger.debug("Starting live update monitoring")
 
