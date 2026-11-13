@@ -14,14 +14,14 @@ Add LocationProvider to your project using Xcode's Package Manager:
 
 1. In Xcode, go to **File > Add Package Dependencies...**
 2. Enter the repository URL
-3. Choose the `main` branch as the dependency rule
+3. Choose **Up to Next Minor Version** from `0.2.0`
 4. Add the package to your target
 
 Alternatively, add it to your `Package.swift` file:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/kraigspear/LocationProvider.git", branch: "main")
+    .package(url: "https://github.com/kraigspear/LocationProvider.git", .upToNextMinor(from: "0.2.0"))
 ]
 ```
 

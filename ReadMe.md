@@ -26,7 +26,7 @@ Add the following to your `Package.swift` file:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/kraigspear/LocationProvider.git", branch: "main")
+    .package(url: "https://github.com/kraigspear/LocationProvider.git", .upToNextMinor(from: "0.2.0"))
 ]
 ```
 
