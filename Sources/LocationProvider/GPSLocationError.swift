@@ -69,7 +69,7 @@ public enum GPSLocationError: LocalizedError, Sendable {
         case .notFound:
             "Unable to determine location. Please check GPS signal and try again."
         case .locationUnavailable:
-            "Location services are temporarily unavailable. This might be due to no GPS signal or airplane mode being enabled."
+            "Your device couldn't determine its location. Try again, ideally with a clearer view of the sky."
         case .serviceSessionRequired:
             "This app can't use your location right now."
         case .preciseLocationRequired:
