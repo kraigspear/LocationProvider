@@ -122,7 +122,7 @@ func errorMessages() {
     let denied = GPSLocationError.authorizationDenied.localizedDescription
     #expect(denied.contains("Settings"))
     #expect(denied.contains("Location Services"))
-    #expect(GPSLocationError.locationUnavailable.localizedDescription.contains("temporarily"))
+    #expect(GPSLocationError.locationUnavailable.localizedDescription.contains("Try again"))
 }
 ```
 
