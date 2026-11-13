@@ -40,7 +40,7 @@ let provider = LocationProvider()
 
 do {
     let location = try await provider.gpsLocation()
-    print("Current location: \(location.name ?? "Unknown")")
+    print("Current location: \(location.name)")
     print("Coordinates: \(location.location.coordinate)")
 } catch {
     print("Failed to get location: \(error)")
@@ -95,18 +95,18 @@ The framework provides detailed error cases through `GPSLocationError`:
 
 #### Advanced Error Handling Example
 
+Show the error's `localizedDescription`, and let its `recovery` pick the action:
+
 ```swift
 do {
     let location = try await provider.gpsLocation()
     print("Location: \(location.name) at \(location.location.coordinate)")
-} catch GPSLocationError.authorizationDenied {
-    // Guide user to Settings > Privacy & Security > Location Services
-    showLocationPermissionAlert()
-} catch GPSLocationError.locationUnavailable {
-    // Handle airplane mode, poor GPS signal, etc.
-    showLocationUnavailableAlert()
 } catch {
-    print("Unexpected error: \(error)")
+    switch error.recovery {
+    case .retry: showRetryAlert(message: error.localizedDescription)
+    case .openSettings: showSettingsAlert(message: error.localizedDescription)
+    case .none: showMessage(error.localizedDescription)
+    }
 }
 ```
 
