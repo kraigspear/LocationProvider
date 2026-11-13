@@ -47,12 +47,11 @@ final class LocationPermissionUITests: XCTestCase {
         case dontAllow = 2
     }
 
-    /// Taps Get Location on the visible page, then answers the system prompt.
+    /// Taps Get Location, then answers the system prompt.
     @MainActor
     private func requestLocation(answeringPromptWith answer: PromptAnswer) throws {
-        let getLocationButton = try XCTUnwrap(
-            app.buttons.matching(identifier: "getLocationButton").allElementsBoundByIndex.first { $0.isHittable },
-            "No visible Get Location button")
+        let getLocationButton = app.buttons["getLocationButton"]
+        XCTAssertTrue(getLocationButton.waitForExistence(timeout: 5), "No Get Location button")
         getLocationButton.tap()
 
         let prompt = XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts.firstMatch
