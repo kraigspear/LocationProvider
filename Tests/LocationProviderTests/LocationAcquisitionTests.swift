@@ -39,7 +39,7 @@ struct LocationAcquisitionTests {
     }
 
     @Test(
-        "Permission errors fail at once",
+        "Errors other than locationUnavailable fail at once",
         arguments: [
             (MockLocationUpdate.denied(), GPSLocationError.authorizationDenied),
             (MockLocationUpdate(authorizationDeniedGlobally: true, locationUnavailable: true), .authorizationDenied),
@@ -47,7 +47,7 @@ struct LocationAcquisitionTests {
             (MockLocationUpdate.insufficientlyInUse(), .insufficientlyInUse),
             (MockLocationUpdate.serviceSessionRequired(), .serviceSessionRequired),
         ])
-    func permissionErrorsFail(update: MockLocationUpdate, expectedError: GPSLocationError) {
+    func nonTransientErrorsFail(update: MockLocationUpdate, expectedError: GPSLocationError) {
         var acquisition = makeAcquisition()
 
         #expect(acquisition.receive(update, at: at(0)) == .fail(expectedError))

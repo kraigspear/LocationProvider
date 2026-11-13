@@ -13,10 +13,10 @@ LocationProvider defines specific error cases that cover all possible location s
 ```swift
 public enum GPSLocationError: LocalizedError {
     case authorizationRestricted    // Parental controls/device management
-    case notFound                  // Cannot determine position
+    case notFound                  // No location before timeout or end of updates
     case authorizationDenied       // Location access denied (app or system-wide)
-    case insufficientlyInUse       // Need "Always" but have "When In Use"
-    case locationUnavailable       // GPS temporarily unavailable
+    case insufficientlyInUse       // Updates suspended while the app wasn't in use
+    case locationUnavailable       // Core Location couldn't determine a location
     case serviceSessionRequired    // App requires a CLServiceSession but holds none
     case preciseLocationRequired   // User has approximate location but precise is needed
 }
@@ -28,8 +28,8 @@ public enum GPSLocationError: LocalizedError {
 
 Each error's ``GPSLocationError/recovery`` names what the user can do about it, so every screen offers the same remedy for the same cause:
 
-- ``GPSLocationError/Recovery/retry``: `notFound` and `locationUnavailable`. The cause may clear on its own, so offer to try again.
-- ``GPSLocationError/Recovery/openSettings``: `authorizationDenied`, `insufficientlyInUse`, and `preciseLocationRequired`. A setting the user controls blocks the location, so offer ``openLocationSettings()``.
+- ``GPSLocationError/Recovery/retry``: `notFound`, `locationUnavailable`, and `insufficientlyInUse`. The cause may clear on its own, or once the app is in use again, so offer to try again.
+- ``GPSLocationError/Recovery/openSettings``: `authorizationDenied` and `preciseLocationRequired`. A setting the user controls blocks the location, so offer ``openLocationSettings()``.
 - ``GPSLocationError/Recovery/none``: `authorizationRestricted` and `serviceSessionRequired`. Neither retrying nor Settings helps, so show the message alone.
 
 ```swift

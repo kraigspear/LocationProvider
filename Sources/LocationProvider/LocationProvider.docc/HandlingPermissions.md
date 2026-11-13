@@ -39,7 +39,7 @@ let location = try await locationProvider.gpsLocation()
 
 ### Error States
 
-A permission refusal surfaces as ``GPSLocationError/authorizationDenied``, ``GPSLocationError/authorizationRestricted``, ``GPSLocationError/insufficientlyInUse``, or ``GPSLocationError/preciseLocationRequired``. You rarely need to tell them apart: each error's ``GPSLocationError/recovery`` says whether a setting the user controls can fix it (``GPSLocationError/Recovery/openSettings``) or nothing the user can change will (``GPSLocationError/Recovery/none``). See <doc:ErrorHandling#Choosing-a-Recovery>.
+A permission refusal surfaces as ``GPSLocationError/authorizationDenied``, ``GPSLocationError/authorizationRestricted``, or ``GPSLocationError/preciseLocationRequired``. You rarely need to tell them apart: each error's ``GPSLocationError/recovery`` says whether a setting the user controls can fix it (``GPSLocationError/Recovery/openSettings``) or nothing the user can change will (``GPSLocationError/Recovery/none``). See <doc:ErrorHandling#Choosing-a-Recovery>.
 
 ```swift
 func showPermissionAlert(for error: GPSLocationError) {
@@ -291,7 +291,7 @@ class LocationManager {
 
 ## Testing Permission Scenarios
 
-Permission outcomes reach your code as ``GPSLocationError/authorizationDenied``, ``GPSLocationError/authorizationRestricted``, and ``GPSLocationError/insufficientlyInUse``. Have a mock provider throw each one to test your UI's response. See <doc:Testing>.
+Permission outcomes reach your code as ``GPSLocationError/authorizationDenied``, ``GPSLocationError/authorizationRestricted``, and ``GPSLocationError/preciseLocationRequired``. Have a mock provider throw each one to test your UI's response. See <doc:Testing>.
 
 ## Next Steps
 

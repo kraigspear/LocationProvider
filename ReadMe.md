@@ -87,9 +87,9 @@ The framework provides detailed error cases through `GPSLocationError`:
 
 - `authorizationDenied`: Location access is not available (app denied or system-wide disabled)
 - `authorizationRestricted`: Location access is restricted by parental controls
-- `insufficientlyInUse`: Current authorization level is insufficient
-- `notFound`: Unable to determine location
-- `locationUnavailable`: Location services temporarily unavailable
+- `insufficientlyInUse`: Updates were suspended because the app wasn't in use, such as a request from the background
+- `notFound`: No location arrived before the timeout or the end of updates, and nothing reported why
+- `locationUnavailable`: Core Location reported it couldn't determine a location
 - `serviceSessionRequired`: The app requires a `CLServiceSession` but holds none
 - `preciseLocationRequired`: User granted only approximate location but the feature needs precise access. This error also occurs when users dismiss the iOS system prompt to upgrade from approximate to precise location
 

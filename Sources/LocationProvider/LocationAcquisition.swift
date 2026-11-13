@@ -105,7 +105,7 @@ struct LocationAcquisition<Instant: InstantProtocol<Duration>>: Sendable {
         lastTransientError ?? .notFound
     }
 
-    /// The error an update reports, checking flags that need user action before transient ones.
+    /// The error an update reports; when it carries several flags, the earlier check wins.
     private static func error(in update: any LocationUpdate) -> GPSLocationError? {
         if update.authorizationDeniedGlobally || update.authorizationDenied {
             .authorizationDenied
