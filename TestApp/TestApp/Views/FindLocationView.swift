@@ -28,8 +28,8 @@ struct FindLocationView: View {
                     .progressViewStyle(.circular)
             case let .loaded(location):
                 LocationInfoView(location: location)
-            case let .error(message):
-                ErrorView(message: message)
+            case let .error(message, recovery):
+                ErrorView(message: message, recovery: recovery)
             }
         }.environment(model)
     }
@@ -57,6 +57,7 @@ struct FindLocationView: View {
         @Environment(FindLocationView.Model.self) private var model
 
         let message: String
+        let recovery: GPSLocationError.Recovery
         var body: some View {
             VStack(spacing: 16) {
                 Text(message)
@@ -64,16 +65,35 @@ struct FindLocationView: View {
                     .foregroundStyle(.red)
                     .accessibilityIdentifier("locationErrorMessage")
 
-                Button(action: {
-                    Task {
-                        await openLocationSettings()
+                switch recovery {
+                case .openSettings:
+                    Button(action: {
+                        Task {
+                            await openLocationSettings()
+                        }
+                    }) {
+                        Text("Open Location Settings")
+                            .padding()
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
                     }
-                }) {
-                    Text("Open Location Settings")
-                        .padding()
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
+                    .accessibilityIdentifier("openLocationSettingsButton")
+                case .retry:
+                    Button(action: {
+                        Task {
+                            await model.fetchCurrentLocation()
+                        }
+                    }) {
+                        Text("Try Again")
+                            .padding()
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+                    }
+                    .accessibilityIdentifier("tryAgainButton")
+                case .none:
+                    EmptyView()
                 }
 
                 Button(action: {
@@ -98,7 +118,7 @@ extension FindLocationView {
             case idle
             case loading
             case loaded(GPSLocation)
-            case error(String)
+            case error(message: String, recovery: GPSLocationError.Recovery)
         }
 
         struct State: Equatable {
@@ -124,7 +144,9 @@ extension FindLocationView {
                 state.innerView = .loaded(gpsLocation)
             } catch {
                 logger.error("Error fetching location: \(error)")
-                state.innerView = .error(error.localizedDescription)
+                // gpsLocation() throws only GPSLocationError; anything else is worth another try.
+                let recovery = (error as? GPSLocationError)?.recovery ?? .retry
+                state.innerView = .error(message: error.localizedDescription, recovery: recovery)
             }
         }
 

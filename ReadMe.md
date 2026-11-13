@@ -112,20 +112,16 @@ do {
 
 ### Opening Location Settings
 
-When permission errors occur, you can help users fix the problem by opening the location settings:
+Each error's `recovery` says what the user can do: `.retry`, `.openSettings`, or `.none`. When it's `.openSettings`, help users fix the problem by opening the location settings:
 
 ```swift
 import LocationProvider
 
 do {
     let location = try await provider.gpsLocation()
-} catch GPSLocationError.authorizationDenied {
-    // Show alert with option to open settings
-    Button("Open Location Settings") {
-        Task {
-            await openLocationSettings()
-        }
-    }
+} catch let error as GPSLocationError where error.recovery == .openSettings {
+    // Drives an alert whose button calls openLocationSettings()
+    settingsError = error
 } catch {
     // Handle other errors
 }
@@ -147,12 +143,14 @@ struct LocationView: View {
                 Text(error.localizedDescription)
                     .foregroundStyle(.red)
 
-                Button("Open Location Settings") {
-                    Task {
-                        await openLocationSettings()
+                if error.recovery == .openSettings {
+                    Button("Open Location Settings") {
+                        Task {
+                            await openLocationSettings()
+                        }
                     }
+                    .buttonStyle(.borderedProminent)
                 }
-                .buttonStyle(.borderedProminent)
             }
         }
     }

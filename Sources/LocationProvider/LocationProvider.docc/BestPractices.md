@@ -502,7 +502,14 @@ class AppErrorHandler {
         var recoveryAction: String? {
             switch self {
             case .locationError(let gpsError):
-                return gpsError.recoveryAction
+                switch gpsError.recovery {
+                case .retry:
+                    return "Make sure you have GPS signal and try again."
+                case .openSettings:
+                    return "Change location access in Settings."
+                case .none:
+                    return nil
+                }
             case .networkError:
                 return "Check your internet connection and try again."
             case .unknown:
@@ -518,19 +525,6 @@ class AppErrorHandler {
             currentError = .networkError(urlError)
         } else {
             currentError = .unknown(error)
-        }
-    }
-}
-
-extension GPSLocationError {
-    var recoveryAction: String {
-        switch self {
-        case .authorizationDenied:
-            return "Enable location access in Settings."
-        case .locationUnavailable, .notFound:
-            return "Make sure you have GPS signal and try again."
-        default:
-            return "Please try again."
         }
     }
 }

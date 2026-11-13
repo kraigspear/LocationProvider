@@ -23,3 +23,7 @@ _Avoid_: Soft error, recoverable error
 **Permission prompt**:
 The system asking the user for location access while an acquisition is underway.
 _Avoid_: Authorization request
+
+**Recovery**:
+What the user can do about an error: try again, change Settings, or nothing.
+_Avoid_: Recovery action, resolution
