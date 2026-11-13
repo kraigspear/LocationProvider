@@ -14,29 +14,27 @@ Add LocationProvider to your project using Xcode's Package Manager:
 
 1. In Xcode, go to **File > Add Package Dependencies...**
 2. Enter the repository URL
-3. Select the version you want to use
+3. Choose the `main` branch as the dependency rule
 4. Add the package to your target
 
 Alternatively, add it to your `Package.swift` file:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/yourusername/LocationProvider.git", from: "1.0.0")
+    .package(url: "https://github.com/kraigspear/LocationProvider.git", branch: "main")
 ]
 ```
 
 ## Configure Info.plist
 
-Before using location services, add the required usage description keys to your app's `Info.plist`:
+Before using location services, add the usage description key to your app's `Info.plist`:
 
 ```xml
 <key>NSLocationWhenInUseUsageDescription</key>
 <string>This app needs location access to show your current position.</string>
-<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-<string>This app needs location access to provide location-based features.</string>
 ```
 
-> Important: The system shows these messages to users when requesting location permissions. Make them descriptive and explain why your app needs location access.
+> Important: The system shows this message to users when requesting location permissions. Make it descriptive and explain why your app needs location access.
 
 ## Your First Location Request
 

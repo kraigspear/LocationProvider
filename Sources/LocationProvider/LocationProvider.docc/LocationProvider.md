@@ -9,7 +9,7 @@ LocationProvider is a SwiftUI-ready framework that provides a clean, modern API 
 ### Key Features
 
 - **Modern Swift API**: Built with async/await and Swift 6 strict concurrency
-- **High-precision GPS**: Accurate location tracking with CoreLocation
+- **One-shot location**: Each call returns the current location, optionally requiring precise accuracy
 - **Reverse Geocoding**: Automatic conversion of coordinates to readable location names
 - **Permission Management**: Built-in handling of location authorization states
 - **SwiftUI Integration**: @MainActor safety for seamless UI updates

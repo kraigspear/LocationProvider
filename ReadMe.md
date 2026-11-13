@@ -4,13 +4,12 @@ A modern Swift framework for handling GPS location services with async/await sup
 
 ## Features
 
-- ✨ Modern Swift async/await API
-- 🎯 High-precision GPS location tracking
+- ✨ One async call returns the current location
+- 🎯 Optional precise-accuracy requirement
 - 📍 Reverse geocoding support
 - 🔒 Built-in permission handling
 - 📱 Main actor safety
-- ⚡️ Live location updates
-- 🧪 Testable architecture
+- 🧭 Typed errors that say how the user can recover
 
 ## Requirements
 
@@ -27,7 +26,7 @@ Add the following to your `Package.swift` file:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/yourusername/LocationProvider.git", from: "1.0.0")
+    .package(url: "https://github.com/kraigspear/LocationProvider.git", branch: "main")
 ]
 ```
 
@@ -72,13 +71,11 @@ The defaults (`10s` timeout, `5s` grace) work well for foreground usage. Increas
 
 ### Handling Permissions
 
-The framework automatically handles location permission requests and provides clear error messages for various authorization states. Make sure to add the required usage description keys to your Info.plist:
+The framework automatically handles location permission requests and provides clear error messages for various authorization states. Make sure to add the usage description key to your Info.plist:
 
 ```xml
 <key>NSLocationWhenInUseUsageDescription</key>
 <string>Your location is used to provide relevant nearby information.</string>
-<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-<string>Your location is used to provide relevant nearby information even when the app is not active.</string>
 ```
 
 ### Error Handling
@@ -174,21 +171,12 @@ A mock returns a `GPSLocation` or throws a `GPSLocationError`. The DocC Testing 
 
 ### Debug Support
 
-For debugging purposes, the framework includes several predefined locations:
+Debug builds include two predefined locations for previews and tests:
 
 ```swift
 #if DEBUG
-// Tech company headquarters
 let appleLocation = GPSLocation.appleHQ
-let googleLocation = GPSLocation.googleHQ
-
-// Famous landmarks
-let eiffelTower = GPSLocation.eiffelTower
 let statueOfLiberty = GPSLocation.statueOfLiberty
-
-// Tourist destinations
-let timesSquare = GPSLocation.timesSquare
-let grandCanyon = GPSLocation.grandCanyon
 #endif
 ```
 
@@ -211,6 +199,8 @@ struct LocationView: View {
                 Text("Coordinates: \(location.location.coordinate)")
             } else if isLoading {
                 ProgressView("Finding location...")
+            } else if let error = error {
+                Text(error.localizedDescription)
             }
         }
         .task {
@@ -233,35 +223,20 @@ struct LocationView: View {
 
 ## Performance & Best Practices
 
-### Battery Optimization
-- The framework uses CoreLocation's live updates which are optimized for battery life
-- Location requests are designed to return quickly and stop automatically
-- No continuous background location tracking unless explicitly needed
+### Battery
+- Each `gpsLocation()` call listens to CoreLocation's live updates only until it has a location or an error, then stops
+- The framework does no background location tracking
 
 ### Thread Safety
-- All LocationProvider methods are marked `@MainActor` for UI safety
+- `LocationProvider` is `@MainActor`, so call it from UI code directly
 - Use `async/await` patterns instead of completion handlers
-- The framework handles all background threading internally
 
-### Memory Management
-- LocationProvider uses value types (structs) where possible
-- No retain cycles - safe to store in view models
-- Automatic cleanup of location services when provider is deallocated
+## Key Components
 
-## Architecture
-
-The framework follows a clean architecture pattern optimizing for:
-- 🧪 **Testability**: Dependency injection with test doubles
-- 🔒 **Thread Safety**: @MainActor annotations and Sendable protocols
-- ⚡️ **Performance**: Efficient location updates and memory management
-- 🎯 **Error Handling**: Comprehensive error types with user guidance
-
-### Key Components
-
-- `LocationProvider`: Main class for handling location services
-- `GPSLocation`: Structure representing a geographical location with name
-- `LocationUpdate`: Protocol defining location update requirements
-- `GPSLocationError`: Comprehensive error handling
+- `LocationProvider`: Fetches the current location; `Configuration` tunes its timing
+- `GPSLocation`: A location with its reverse-geocoded name
+- `GPSLocationError`: Why no location arrived, with a message and a `recovery`
+- `openLocationSettings()`: Opens the settings screen where users grant location access
 
 ## Framework Integration
 
@@ -272,17 +247,18 @@ import MapKit
 
 extension GPSLocation {
     var mapItem: MKMapItem {
-        let placemark = MKPlacemark(coordinate: location.coordinate)
-        let mapItem = MKMapItem(placemark: placemark)
+        let mapItem = MKMapItem(location: location, address: nil)
         mapItem.name = name
         return mapItem
     }
 }
 ```
 
-### Core Data Integration
+### SwiftData Integration
 
 ```swift
+import SwiftData
+
 @Model
 class SavedLocation {
     var name: String
@@ -325,14 +301,14 @@ let location = try await locationProvider.gpsLocation()
 
 ### Common Issues
 
-**"Location not found" errors:**
-- Ensure Location Services are enabled in device settings
-- Check that your app has location permissions
-- Verify GPS signal availability (not in airplane mode)
+**`notFound` or `locationUnavailable` errors:**
+- The device couldn't get a fix in time; move to a spot with a clearer view of the sky and try again
+- Raise `locationAcquisitionTimeout` if your app can wait longer
 
-**"Authorization denied" errors:**
-- Add required Info.plist keys (see Configuration section)
-- Guide users to Settings > Privacy & Security > Location Services > [Your App]
+**`authorizationDenied` errors:**
+- Add the Info.plist key (see Handling Permissions)
+- Location Services may be off for the whole device, or for your app
+- Call `openLocationSettings()` to take users to the setting
 
 **Reverse geocoding failures:**
 - Network connectivity required for address lookup
@@ -358,7 +334,3 @@ No third-party dependencies are required.
 Contributions are welcome! Please feel free to submit a Pull Request.
 
 Run the unit tests with `./test.sh`, which passes its arguments to `swift test`. It fails a run that hangs, which Swift Testing's time limit cannot stop when a test waits on a continuation that never resumes.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
