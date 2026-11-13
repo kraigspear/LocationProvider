@@ -49,11 +49,10 @@ public enum GPSLocationError: LocalizedError, Sendable {
     /// details about deferred updates or network-assisted location to end users.
     case locationUnavailable
 
-    /// A service session (like Find My) is required but not active
+    /// The app requires an explicit `CLServiceSession` for location but holds none.
     ///
-    /// Why this exists: Some location features require active service sessions. This provides
-    /// specific guidance about enabling required services rather than generic "unavailable"
-    /// messages that don't explain what action to take.
+    /// Why this exists: an app that opts into explicit service sessions gets no location until it
+    /// creates one. That is the app's fix, not the user's, so the message names no setting to change.
     case serviceSessionRequired
 
     /// User granted approximate location permission but the app requires precise location.
@@ -82,7 +81,7 @@ public enum GPSLocationError: LocalizedError, Sendable {
         case .locationUnavailable:
             "Location services are temporarily unavailable. This might be due to no GPS signal or airplane mode being enabled."
         case .serviceSessionRequired:
-            "This feature requires an active service session. Please ensure necessary services like Find My are enabled."
+            "This app can't use your location right now."
         case .preciseLocationRequired:
             // Settings lists location permissions under the host app, so use Bundle.main.
             "Precise location is required but only approximate location is available. Enable Precise Location in Settings > Privacy & Security > Location Services > \(Bundle.main.displayName) to share your exact location."

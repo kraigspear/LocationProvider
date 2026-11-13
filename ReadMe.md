@@ -90,7 +90,7 @@ The framework provides detailed error cases through `GPSLocationError`:
 - `insufficientlyInUse`: Current authorization level is insufficient
 - `notFound`: Unable to determine location
 - `locationUnavailable`: Location services temporarily unavailable
-- `serviceSessionRequired`: Required service session not active
+- `serviceSessionRequired`: The app requires a `CLServiceSession` but holds none
 - `preciseLocationRequired`: User granted only approximate location but the feature needs precise access. This error also occurs when users dismiss the iOS system prompt to upgrade from approximate to precise location
 
 #### Advanced Error Handling Example
