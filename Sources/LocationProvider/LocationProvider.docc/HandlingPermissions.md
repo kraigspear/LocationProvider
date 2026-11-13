@@ -31,7 +31,7 @@ do {
     // This may trigger permission request if needed
     let location = try await locationProvider.gpsLocation()
     print("Location received: \(location.name)")
-} catch let error as GPSLocationError {
+} catch {
     // Now get specific, actionable error messages
     print("Location error: \(error.localizedDescription)")
     // Example: "Location access is disabled for this app. You can enable it in Settings > Privacy > Location Services."
@@ -210,12 +210,9 @@ struct LocationPermissionView: View {
     private func requestLocation() async {
         do {
             location = try await locationProvider.gpsLocation()
-        } catch let error as GPSLocationError {
+        } catch {
             permissionError = error
             showingPermissionAlert = true
-        } catch {
-            // Handle other errors
-            print("Unexpected error: \(error)")
         }
     }
 
@@ -242,7 +239,7 @@ catch {
 ### After (Specific Errors)
 ```swift
 // New behavior: Specific, actionable error messages
-catch let error as GPSLocationError {
+catch {
     print(error.localizedDescription)
     // "Location access is disabled for this app. You can enable it in Settings > Privacy > Location Services."
 }
@@ -389,7 +386,7 @@ class LocationManager {
         do {
             location = try await locationProvider.gpsLocation()
             lastError = nil
-        } catch let error as GPSLocationError {
+        } catch {
             lastError = error
         }
     }

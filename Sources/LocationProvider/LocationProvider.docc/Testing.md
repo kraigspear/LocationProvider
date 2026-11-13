@@ -15,7 +15,7 @@ import LocationProvider
 
 @MainActor
 protocol LocationProviding {
-    func gpsLocation(accuracyRequirement: LocationProvider.AccuracyRequirement) async throws -> GPSLocation
+    func gpsLocation(accuracyRequirement: LocationProvider.AccuracyRequirement) async throws(GPSLocationError) -> GPSLocation
 }
 
 extension LocationProvider: LocationProviding {}
@@ -44,10 +44,8 @@ final class LocationViewModel {
         do {
             location = try await locationProvider.gpsLocation(accuracyRequirement: .any)
             error = nil
-        } catch let locationError as GPSLocationError {
-            error = locationError
         } catch {
-            self.error = .notFound
+            self.error = error
         }
     }
 }
@@ -64,7 +62,7 @@ final class MockLocationProvider: LocationProviding {
         self.result = result
     }
 
-    func gpsLocation(accuracyRequirement _: LocationProvider.AccuracyRequirement) async throws -> GPSLocation {
+    func gpsLocation(accuracyRequirement _: LocationProvider.AccuracyRequirement) async throws(GPSLocationError) -> GPSLocation {
         try result.get()
     }
 }

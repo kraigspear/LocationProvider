@@ -144,9 +144,7 @@ extension FindLocationView {
                 state.innerView = .loaded(gpsLocation)
             } catch {
                 logger.error("Error fetching location: \(error)")
-                // gpsLocation() throws only GPSLocationError; anything else is worth another try.
-                let recovery = (error as? GPSLocationError)?.recovery ?? .retry
-                state.innerView = .error(message: error.localizedDescription, recovery: recovery)
+                state.innerView = .error(message: error.localizedDescription, recovery: error.recovery)
             }
         }
 

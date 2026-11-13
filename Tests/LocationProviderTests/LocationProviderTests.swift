@@ -193,6 +193,41 @@ struct LocationProviderTest {
     }
 
     @MainActor
+    struct Cancellation {
+        @Test(
+            "A cancelled request fails as a timeout would",
+            arguments: [
+                ([UpdateStep.stall], GPSLocationError.notFound),
+                ([.update(MockLocationUpdate.locationNotAvailable()), .stall], .locationUnavailable),
+            ])
+        func cancelledRequestFailsAsTimeout(steps: [UpdateStep], expectedError: GPSLocationError) async {
+            let clock = TestClock()
+            let provider = LocationProvider(client: .test(steps, clock: clock), clock: clock)
+
+            // Catching into a typed Result compiles only while gpsLocation() throws GPSLocationError alone
+            let request = Task { () async -> Result<GPSLocation, GPSLocationError> in
+                do throws(GPSLocationError) {
+                    return try await .success(provider.gpsLocation())
+                } catch {
+                    return .failure(error)
+                }
+            }
+
+            // The time limit cancels only the test's task, so pass it on to the unstructured request
+            await withTaskCancellationHandler {
+                // The stalled stream and the timeout are both asleep, so the request is mid-acquisition
+                await clock.waitForSleepers(2)
+                request.cancel()
+
+                let result = await request.value
+                #expect(throws: expectedError) { try result.get() }
+            } onCancel: {
+                request.cancel()
+            }
+        }
+    }
+
+    @MainActor
     struct Permissions {
         @Test("Permissions denied, Error thrown")
         func permissionsDenied() async throws {

@@ -121,14 +121,11 @@ func getCurrentLocation() async {
     do {
         let location = try await LocationProvider().gpsLocation()
         handleLocationSuccess(location)
-    } catch let error as GPSLocationError {
+    } catch {
         // Error messages are now specific and actionable
         print("Location error: \(error.localizedDescription)")
         // Example output: "Location access is disabled for this app. You can enable it in Settings > Privacy > Location Services."
         handleLocationError(error)
-    } catch {
-        // Unexpected errors (should be rare with improved error mapping)
-        handleUnexpectedError(error)
     }
 }
 
@@ -145,6 +142,8 @@ func handleLocationError(_ error: GPSLocationError) {
     }
 }
 ```
+
+``LocationProvider/LocationProvider/gpsLocation(accuracyRequirement:)`` throws only ``GPSLocationError``, so `catch` binds it without a cast. A request cancelled while waiting for a fix fails as a timeout would; once a fix arrives, it returns that location even if cancelled during reverse geocoding. Inside a closure, such as a SwiftUI `.task`, write `do throws(GPSLocationError)`: Swift infers a closure's thrown type only with full typed throws enabled, so a plain `catch` there binds `any Error`.
 
 ## Permission-Related Errors
 
@@ -326,12 +325,9 @@ struct LocationErrorHandlingView: View {
 
         do {
             location = try await LocationProvider().gpsLocation()
-        } catch let error as GPSLocationError {
+        } catch {
             errorState = mapErrorToState(error)
             recovery = error.recovery
-        } catch {
-            errorState = .other(error.localizedDescription)
-            recovery = .retry
         }
     }
 
@@ -421,11 +417,8 @@ class RobustLocationManager {
             location = try await locationProvider.gpsLocation()
             retryCount = 0
             isLoading = false
-        } catch let locationError as GPSLocationError {
-            await handleLocationError(locationError)
         } catch {
-            self.error = .notFound
-            isLoading = false
+            await handleLocationError(error)
         }
     }
 
