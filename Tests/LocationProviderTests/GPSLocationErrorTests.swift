@@ -8,7 +8,7 @@ struct GPSLocationErrorTests {
             (GPSLocationError.notFound, GPSLocationError.Recovery.retry),
             (.locationUnavailable, .retry),
             (.authorizationDenied, .openSettings),
-            (.insufficientlyInUse, .openSettings),
+            (.insufficientlyInUse, .retry),
             (.preciseLocationRequired, .openSettings),
             (.authorizationRestricted, .none),
             (.serviceSessionRequired, .none),

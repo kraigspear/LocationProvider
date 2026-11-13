@@ -21,11 +21,7 @@ public enum GPSLocationError: LocalizedError, Sendable {
     /// administrator rather than Settings.
     case authorizationRestricted
 
-    /// Location services are temporarily unavailable or cannot determine position
-    ///
-    /// Why this exists: Represents transient failures (no GPS signal, airplane mode, hardware
-    /// issues) that may resolve without user action. Grouped separately from authorization
-    /// errors to suggest "wait and retry" rather than "change settings."
+    /// No location arrived before the timeout or the end of updates, and nothing reported why.
     case notFound
 
     /// User has denied location permissions or location services are disabled
@@ -35,18 +31,12 @@ public enum GPSLocationError: LocalizedError, Sendable {
     /// whether location is disabled system-wide or just for this app.
     case authorizationDenied
 
-    /// Current authorization level is not sufficient for the required location features
+    /// Core Location suspended updates because the app wasn't in use, such as a request made from the background.
     ///
-    /// Why this exists: Apps may have "When In Use" but need "Always", or similar scenarios
-    /// where partial authorization exists but isn't sufficient. This provides specific guidance
-    /// about upgrading permissions rather than generic "denied" messaging.
+    /// No setting fixes it: updates resume once the app is in use, so asking again from the foreground can succeed.
     case insufficientlyInUse
 
-    /// Location services are currently unavailable (e.g., no GPS signal, hardware issues)
-    ///
-    /// Why this exists: Consolidates multiple transient CLError cases (locationUnknown, network,
-    /// deferred failures, etc.) into one user-facing error. Avoids exposing implementation
-    /// details about deferred updates or network-assisted location to end users.
+    /// Core Location reported it couldn't determine a location.
     case locationUnavailable
 
     /// The app requires an explicit `CLServiceSession` for location but holds none.
@@ -75,7 +65,7 @@ public enum GPSLocationError: LocalizedError, Sendable {
         case .authorizationRestricted:
             "Location access is restricted by device management settings. Please contact your device administrator."
         case .insufficientlyInUse:
-            "Additional location permissions are needed. Please update your location settings for this app."
+            "Location updates paused while this app wasn't in use. Try again."
         case .notFound:
             "Unable to determine location. Please check GPS signal and try again."
         case .locationUnavailable:
@@ -101,9 +91,9 @@ public enum GPSLocationError: LocalizedError, Sendable {
     /// What the user can do about this error, so callers show the same remedy for the same cause.
     public var recovery: Recovery {
         switch self {
-        case .notFound, .locationUnavailable:
+        case .notFound, .locationUnavailable, .insufficientlyInUse:
             .retry
-        case .authorizationDenied, .insufficientlyInUse, .preciseLocationRequired:
+        case .authorizationDenied, .preciseLocationRequired:
             .openSettings
         case .authorizationRestricted, .serviceSessionRequired:
             .none

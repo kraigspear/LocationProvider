@@ -68,7 +68,7 @@ extension MockLocationUpdate {
         Self(authorizationRequestInProgress: true)
     }
 
-    /// Not observed: no simulator setup produces it.
+    /// Not observed: needs location requested while the app isn't in use, such as from the background.
     static func insufficientlyInUse() -> Self {
         Self(
             insufficientlyInUse: true,
