@@ -95,12 +95,15 @@ struct LocationAcquisitionTests {
 
         @Test("A permission prompt wins over the unavailable flag it arrives with")
         func promptWinsOverUnavailable() {
-            // Given: requestInProgress() also sets locationUnavailable, with no grace period at all
+            // Given: a prompt carrying locationUnavailable too (not observed; guards precedence), no grace period
             var acquisition = makeAcquisition(gracePeriod: .zero)
             _ = acquisition.receive(MockLocationUpdate.locationNotAvailable(), at: at(0))
+            let promptAndUnavailable = MockLocationUpdate(
+                authorizationRequestInProgress: true,
+                locationUnavailable: true)
 
             // Then: the prompt continues instead of ending the grace period
-            #expect(acquisition.receive(MockLocationUpdate.requestInProgress(), at: at(1)) == .continue)
+            #expect(acquisition.receive(promptAndUnavailable, at: at(1)) == .continue)
         }
 
         @Test("A permission prompt clears the last transient error, which predates it")

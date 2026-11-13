@@ -37,7 +37,7 @@ struct LocationAcquisition<Instant: InstantProtocol<Duration>>: Sendable {
     }
 
     mutating func receive(_ update: any LocationUpdate, at now: Instant) -> Decision {
-        // Checked first: the prompt arrives with other flags set, such as locationUnavailable.
+        // Checked first, so a prompt wins over any other flag it carries.
         if update.authorizationRequestInProgress {
             logger.debug("Authorization request in progress; restarting the acquisition window")
             // Errors from before the prompt are stale, so they go too.
