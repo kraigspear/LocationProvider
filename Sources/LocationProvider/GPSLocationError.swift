@@ -88,6 +88,28 @@ public enum GPSLocationError: LocalizedError, Sendable {
             "Precise location is required but only approximate location is available. Enable Precise Location in Settings > Privacy & Security > Location Services > \(Bundle.main.displayName) to share your exact location."
         }
     }
+
+    /// What the user can do about an error.
+    public enum Recovery: Sendable {
+        /// The cause may clear on its own, so asking again can succeed.
+        case retry
+        /// A setting the user controls blocks the location; ``openLocationSettings()`` takes them there.
+        case openSettings
+        /// Nothing the user can change: device management or the app itself blocks the location.
+        case none
+    }
+
+    /// What the user can do about this error, so callers show the same remedy for the same cause.
+    public var recovery: Recovery {
+        switch self {
+        case .notFound, .locationUnavailable:
+            .retry
+        case .authorizationDenied, .insufficientlyInUse, .preciseLocationRequired:
+            .openSettings
+        case .authorizationRestricted, .serviceSessionRequired:
+            .none
+        }
+    }
 }
 
 private extension Bundle {

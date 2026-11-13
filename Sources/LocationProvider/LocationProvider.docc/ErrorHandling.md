@@ -44,6 +44,25 @@ public enum GPSLocationError: LocalizedError {
 
 > **Important**: Each error now provides specific, user-friendly messages through `localizedDescription`. These messages tell users exactly what's wrong and how to fix it, eliminating the need for generic error handling.
 
+## Choosing a Recovery
+
+Each error's ``GPSLocationError/recovery`` names what the user can do about it, so every screen offers the same remedy for the same cause:
+
+- ``GPSLocationError/Recovery/retry``: `notFound` and `locationUnavailable`. The cause may clear on its own, so offer to try again.
+- ``GPSLocationError/Recovery/openSettings``: `authorizationDenied`, `insufficientlyInUse`, and `preciseLocationRequired`. A setting the user controls blocks the location, so offer ``openLocationSettings()``.
+- ``GPSLocationError/Recovery/none``: `authorizationRestricted` and `serviceSessionRequired`. Neither retrying nor Settings helps, so show the message alone.
+
+```swift
+switch error.recovery {
+case .retry:
+    Button("Try Again") { Task { await requestLocation() } }
+case .openSettings:
+    Button("Open Settings") { Task { await openLocationSettings() } }
+case .none:
+    EmptyView()
+}
+```
+
 ## Precision-Related Errors
 
 ### Precise Location Required
@@ -245,6 +264,7 @@ Handle errors elegantly in SwiftUI with proper state management:
 struct LocationErrorHandlingView: View {
     @State private var location: GPSLocation?
     @State private var errorState: ErrorState?
+    @State private var recovery = GPSLocationError.Recovery.retry
     @State private var isLoading = false
 
     enum ErrorState {
@@ -287,7 +307,7 @@ struct LocationErrorHandlingView: View {
             } else if isLoading {
                 ProgressView("Finding location...")
             } else if let errorState = errorState {
-                ErrorView(errorState: errorState) {
+                ErrorView(errorState: errorState, recovery: recovery) {
                     await requestLocation()
                 }
             } else {
@@ -308,8 +328,10 @@ struct LocationErrorHandlingView: View {
             location = try await LocationProvider().gpsLocation()
         } catch let error as GPSLocationError {
             errorState = mapErrorToState(error)
+            recovery = error.recovery
         } catch {
             errorState = .other(error.localizedDescription)
+            recovery = .retry
         }
     }
 
@@ -329,6 +351,7 @@ struct LocationErrorHandlingView: View {
 
 struct ErrorView: View {
     let errorState: LocationErrorHandlingView.ErrorState
+    let recovery: GPSLocationError.Recovery
     let retryAction: () async -> Void
 
     var body: some View {
@@ -345,27 +368,22 @@ struct ErrorView: View {
                 .multilineTextAlignment(.center)
                 .foregroundColor(.secondary)
 
-            HStack(spacing: 12) {
-                if errorState == .permissionDenied {
-                    Button("Open Settings") {
-                        openAppSettings()
-                    }
-                    .buttonStyle(.borderedProminent)
+            switch recovery {
+            case .openSettings:
+                Button("Open Settings") {
+                    Task { await openLocationSettings() }
                 }
-
+                .buttonStyle(.borderedProminent)
+            case .retry:
                 Button("Try Again") {
                     Task { await retryAction() }
                 }
                 .buttonStyle(.bordered)
+            case .none:
+                EmptyView()
             }
         }
         .padding()
-    }
-
-    private func openAppSettings() {
-        if let url = URL(string: UIApplication.openSettingsURLString) {
-            UIApplication.shared.open(url)
-        }
     }
 }
 ```
@@ -412,9 +430,8 @@ class RobustLocationManager {
     }
 
     private func handleLocationError(_ locationError: GPSLocationError) async {
-        switch locationError {
-        case .locationUnavailable, .notFound:
-            // Retry these errors
+        switch locationError.recovery {
+        case .retry:
             if retryCount < maxRetries {
                 retryCount += 1
                 let delay = Double(retryCount * retryCount) // Exponential backoff
@@ -425,12 +442,8 @@ class RobustLocationManager {
                 isLoading = false
             }
 
-        case .authorizationDenied, .authorizationRestricted:
-            // Don't retry permission errors
-            error = locationError
-            isLoading = false
-
-        default:
+        case .openSettings, .none:
+            // Asking again can't succeed until the user or device changes something
             error = locationError
             isLoading = false
         }

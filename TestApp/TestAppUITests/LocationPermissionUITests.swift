@@ -34,6 +34,9 @@ final class LocationPermissionUITests: XCTestCase {
         XCTAssertTrue(
             errorMessage.label.hasPrefix("Location access is not available"),
             "Expected the authorizationDenied message, got: \(errorMessage.label)")
+        // Denial is fixed in Settings, so retrying is not offered
+        XCTAssertTrue(app.buttons["openLocationSettingsButton"].exists, "No Open Location Settings button")
+        XCTAssertFalse(app.buttons["tryAgainButton"].exists, "Try Again offered for a Settings error")
     }
 
     /// The location prompt's buttons, by position. SpringBoard gives them no identifiers and labels them in the
