@@ -49,7 +49,7 @@ let locationProvider = LocationProvider()
 // Request the current location
 do {
     let location = try await locationProvider.gpsLocation()
-    print("Current location: \(location.name)")
+    print("Current location: \(location.name ?? "unnamed")")
     print("Coordinates: \(location.location.coordinate.latitude), \(location.location.coordinate.longitude)")
 } catch {
     // localizedDescription is written for the user; recovery says what they can do
@@ -61,14 +61,14 @@ do {
 
 When you call `gpsLocation()`, LocationProvider returns a ``GPSLocation`` object that contains:
 
-- **`name`**: A human-readable location name (e.g., "San Francisco") or `"GPS"` if reverse geocoding fails
+- **`name`**: A human-readable location name (e.g., "San Francisco"), or `nil` when reverse geocoding failed or found no name
 - **`location`**: The raw `CLLocation` object with coordinates, accuracy, and timestamp
 
 ```swift
 let gpsLocation = try await locationProvider.gpsLocation()
 
-// Access the readable name (defaults to "GPS" if reverse geocoding failed)
-print("You are in: \(gpsLocation.name)")
+// The readable name is nil when reverse geocoding failed or found no name
+print("You are in: \(gpsLocation.name ?? "an unnamed place")")
 
 // Access coordinate details
 let coordinate = gpsLocation.location.coordinate
@@ -132,7 +132,7 @@ struct ContentView: View {
     var body: some View {
         VStack {
             if let location = location {
-                Text("Current Location: \(location.name)")
+                Text("Current Location: \(location.name ?? "Unknown")")
             } else {
                 Text("Tap to get location")
             }

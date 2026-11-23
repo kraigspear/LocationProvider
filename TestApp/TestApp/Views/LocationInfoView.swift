@@ -19,7 +19,7 @@ struct LocationInfoView: View {
             VStack(alignment: .leading, spacing: 8) {
                 LineView(
                     title: "Name",
-                    line: location.name,
+                    line: location.name ?? "None",
                     identifier: "locationName")
 
                 LineView(

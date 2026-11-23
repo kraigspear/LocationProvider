@@ -541,7 +541,7 @@ class PrivacyAwareLocationManager {
         let latitude: Double
         let longitude: Double
         let timestamp: Date
-        let name: String
+        let name: String?
 
         init(from gpsLocation: GPSLocation) {
             self.latitude = gpsLocation.location.coordinate.latitude

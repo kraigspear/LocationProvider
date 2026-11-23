@@ -29,7 +29,7 @@ let logger = Logger(subsystem: "com.spearware.location", category: "📍Location
 /// let provider = LocationProvider()
 /// do {
 ///     let location = try await provider.gpsLocation()
-///     print("Current location: \(location.name)")
+///     print("Current location: \(location.name ?? "unnamed")")
 /// } catch {
 ///     print("Failed to get location: \(error)")
 /// }

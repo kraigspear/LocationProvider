@@ -10,12 +10,12 @@ import CoreLocation
 /// A structure that represents a geographical location with an associated name.
 ///
 /// This structure combines a physical location (represented by `CLLocation`) with a human-readable name
-/// for that location. If no specific name is provided, it defaults to "GPS".
+/// for that location, when reverse geocoding finds one.
 public struct GPSLocation: CustomStringConvertible, Sendable, Equatable {
     // MARK: Properties
 
-    /// The human-readable name of the location
-    public let name: String
+    /// The human-readable name of the location, or `nil` when reverse geocoding failed or found no name
+    public let name: String?
 
     /// The physical location coordinates and related information
     public let location: CLLocation
@@ -25,15 +25,15 @@ public struct GPSLocation: CustomStringConvertible, Sendable, Equatable {
     /// Creates a new GPS location with a name and coordinates.
     ///
     /// - Parameters:
-    ///   - name: An optional string representing the location's name. Defaults to "GPS" if nil
+    ///   - name: The location's name, or `nil` when it has none
     ///   - location: A `CLLocation` object containing the physical location data
     public init(name: String?, location: CLLocation) {
-        self.name = name ?? "GPS"
+        self.name = name
         self.location = location
     }
 
     public var description: String {
-        "name: \(name) location: \(location)"
+        "name: \(name ?? "nil") location: \(location)"
     }
 }
 

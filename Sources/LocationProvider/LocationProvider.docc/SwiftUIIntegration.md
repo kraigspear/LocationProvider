@@ -28,7 +28,7 @@ struct SimpleLocationView: View {
                 VStack {
                     Text("Current Location")
                         .font(.headline)
-                    Text(location.name)
+                    Text(location.name ?? "Unknown")
                         .font(.title2)
                         .fontWeight(.semibold)
                     Text("Lat: \(location.location.coordinate.latitude, specifier: "%.4f")")
@@ -327,7 +327,7 @@ struct LocationMapView: View {
 struct LocationAnnotation: Identifiable {
     let id = UUID()
     let coordinate: CLLocationCoordinate2D
-    let title: String
+    let title: String?
 
     init(location: GPSLocation) {
         self.coordinate = location.location.coordinate
@@ -391,7 +391,7 @@ struct ChildView: View {
 
     var body: some View {
         if let location = locationManager.currentLocation {
-            Text("Current location: \(location.name)")
+            Text("Current location: \(location.name ?? "Unknown")")
         } else {
             Text("Location not available")
         }

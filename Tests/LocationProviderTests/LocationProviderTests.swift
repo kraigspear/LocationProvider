@@ -61,7 +61,7 @@ struct LocationProviderTest {
         #expect(gPSLocation.name == "KraigTown")
     }
 
-    @Test("Reverse geocoding fails, name is given default GPS")
+    @Test("Reverse geocoding fails, location has no name")
     func reverseGeocodingError() async throws {
         let clock = TestClock()
         let expectedLocation = GPSLocation.statueOfLiberty.location
@@ -74,7 +74,23 @@ struct LocationProviderTest {
         let gPSLocation = try await locationProvider.gpsLocation()
 
         #expect(gPSLocation.location == expectedLocation)
-        #expect(gPSLocation.name == "GPS")
+        #expect(gPSLocation.name == nil)
+    }
+
+    @Test("Reverse geocoding finds no name, location has no name")
+    func reverseGeocodingFindsNoName() async throws {
+        let clock = TestClock()
+        let expectedLocation = GPSLocation.statueOfLiberty.location
+        let locationUpdate = MockLocationUpdate(location: expectedLocation)
+        let client = LocationProvider.Client.test(
+            [.update(locationUpdate)],
+            clock: clock,
+            reverseGeocodeLocation: .success(nil))
+        let locationProvider = LocationProvider(client: client, clock: clock)
+        let gPSLocation = try await locationProvider.gpsLocation()
+
+        #expect(gPSLocation.location == expectedLocation)
+        #expect(gPSLocation.name == nil)
     }
 
     @Test("Stream failure surfaces authorization denied")

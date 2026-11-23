@@ -21,7 +21,7 @@ let locationProvider = LocationProvider()
 do {
     // This may trigger permission request if needed
     let location = try await locationProvider.gpsLocation()
-    print("Location received: \(location.name)")
+    print("Location received: \(location.name ?? "unnamed")")
 } catch {
     print("Location error: \(error.localizedDescription)")
     handleLocationError(error)
@@ -221,7 +221,7 @@ struct LocationAwareView: View {
     var body: some View {
         VStack {
             if let location = location {
-                Text("Current location: \(location.name)")
+                Text("Current location: \(location.name ?? "Unknown")")
             } else if useManualLocation {
                 LocationPicker { selectedLocation in
                     // Handle manual location selection
