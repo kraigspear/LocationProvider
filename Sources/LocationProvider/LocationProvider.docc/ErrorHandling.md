@@ -122,11 +122,11 @@ LocationProvider gracefully handles reverse geocoding failures without throwing 
 ```swift
 do {
     let location = try await LocationProvider().gpsLocation()
-    // location.name is nil when reverse geocoding failed or found no name
+    // location.name is nil when reverse geocoding failed or found no name; the two look the same
     if let name = location.name {
         print("Location: \(name)")
     } else {
-        print("Location coordinates available but address lookup failed")
+        print("Location coordinates available. No place name available.")
         print("Coordinates: \(location.location.coordinate)")
     }
 } catch {

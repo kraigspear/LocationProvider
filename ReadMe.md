@@ -26,7 +26,7 @@ Add the following to your `Package.swift` file:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/kraigspear/LocationProvider.git", .upToNextMinor(from: "0.2.0"))
+    .package(url: "https://github.com/kraigspear/LocationProvider.git", .upToNextMinor(from: "0.3.0"))
 ]
 ```
 
@@ -234,7 +234,7 @@ struct LocationView: View {
 ## Key Components
 
 - `LocationProvider`: Fetches the current location; `Configuration` tunes its timing
-- `GPSLocation`: A location with its reverse-geocoded name
+- `GPSLocation`: A location with its reverse-geocoded name, when there is one
 - `GPSLocationError`: Why no location arrived, with a message and a `recovery`
 - `openLocationSettings()`: Opens the settings screen where users grant location access
 

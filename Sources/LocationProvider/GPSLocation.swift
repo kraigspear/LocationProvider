@@ -7,7 +7,7 @@
 
 import CoreLocation
 
-/// A structure that represents a geographical location with an associated name.
+/// A structure that represents a geographical location and, when known, its name.
 ///
 /// This structure combines a physical location (represented by `CLLocation`) with a human-readable name
 /// for that location, when reverse geocoding finds one.
@@ -22,7 +22,7 @@ public struct GPSLocation: CustomStringConvertible, Sendable, Equatable {
 
     // MARK: Initialization
 
-    /// Creates a new GPS location with a name and coordinates.
+    /// Creates a new GPS location from coordinates and an optional name.
     ///
     /// - Parameters:
     ///   - name: The location's name, or `nil` when it has none
