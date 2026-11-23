@@ -101,11 +101,11 @@ struct LocationViewModelTests {
 }
 ```
 
-When reverse geocoding fails, `LocationProvider` still returns the location, named `"GPS"`. To test how your UI shows an unnamed location, build one the same way:
+When reverse geocoding fails or finds no name, `LocationProvider` still returns the location, with `name` set to `nil`. To test how your UI shows an unnamed location, build one the same way:
 
 ```swift
 let unnamedLocation = GPSLocation(name: nil, location: CLLocation(latitude: 1, longitude: 1))
-// unnamedLocation.name == "GPS"
+// unnamedLocation.name == nil
 ```
 
 ## Debug Locations

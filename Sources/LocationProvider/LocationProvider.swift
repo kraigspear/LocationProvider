@@ -29,7 +29,7 @@ let logger = Logger(subsystem: "com.spearware.location", category: "📍Location
 /// let provider = LocationProvider()
 /// do {
 ///     let location = try await provider.gpsLocation()
-///     print("Current location: \(location.name)")
+///     print("Current location: \(location.name ?? "unnamed")")
 /// } catch {
 ///     print("Failed to get location: \(error)")
 /// }
@@ -69,12 +69,12 @@ public final class LocationProvider {
 
     // MARK: - Public Interface
 
-    /// Retrieves the current GPS location with a human-readable name.
+    /// Retrieves the current GPS location, with a human-readable name when reverse geocoding finds one.
     ///
     /// This method performs the following steps:
     /// 1. Requests and waits for the first available live location update
     /// 2. Attempts to reverse geocode the location to get a readable name
-    /// 3. Returns a `GPSLocation` combining both pieces of information
+    /// 3. Returns a `GPSLocation` holding the location and the name, if one was found
     ///
     /// - Parameter accuracyRequirement: Determines if reduced-accuracy locations are acceptable.
     ///   Use `.any` (default) for general location needs where approximate location (within ~1-20km) is sufficient,

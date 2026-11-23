@@ -1,6 +1,6 @@
 # LocationProvider
 
-Turns the device's stream of location updates into one named location, or one error the user can act on.
+Turns the device's stream of location updates into one location, named when reverse geocoding finds a name, or one error the user can act on.
 
 ## Language
 

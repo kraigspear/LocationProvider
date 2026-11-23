@@ -14,14 +14,14 @@ Add LocationProvider to your project using Xcode's Package Manager:
 
 1. In Xcode, go to **File > Add Package Dependencies...**
 2. Enter the repository URL
-3. Choose **Up to Next Minor Version** from `0.2.0`
+3. Choose **Up to Next Minor Version** from `0.3.0`
 4. Add the package to your target
 
 Alternatively, add it to your `Package.swift` file:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/kraigspear/LocationProvider.git", .upToNextMinor(from: "0.2.0"))
+    .package(url: "https://github.com/kraigspear/LocationProvider.git", .upToNextMinor(from: "0.3.0"))
 ]
 ```
 
@@ -49,7 +49,7 @@ let locationProvider = LocationProvider()
 // Request the current location
 do {
     let location = try await locationProvider.gpsLocation()
-    print("Current location: \(location.name)")
+    print("Current location: \(location.name ?? "unnamed")")
     print("Coordinates: \(location.location.coordinate.latitude), \(location.location.coordinate.longitude)")
 } catch {
     // localizedDescription is written for the user; recovery says what they can do
@@ -61,14 +61,14 @@ do {
 
 When you call `gpsLocation()`, LocationProvider returns a ``GPSLocation`` object that contains:
 
-- **`name`**: A human-readable location name (e.g., "San Francisco") or `"GPS"` if reverse geocoding fails
+- **`name`**: A human-readable location name (e.g., "San Francisco"), or `nil` when reverse geocoding failed or found no name
 - **`location`**: The raw `CLLocation` object with coordinates, accuracy, and timestamp
 
 ```swift
 let gpsLocation = try await locationProvider.gpsLocation()
 
-// Access the readable name (defaults to "GPS" if reverse geocoding failed)
-print("You are in: \(gpsLocation.name)")
+// The readable name is nil when reverse geocoding failed or found no name
+print("You are in: \(gpsLocation.name ?? "an unnamed place")")
 
 // Access coordinate details
 let coordinate = gpsLocation.location.coordinate
@@ -87,8 +87,8 @@ When you call `gpsLocation()`, LocationProvider:
 1. **Requests Permissions**: Automatically handles location authorization if needed
 2. **Gets Location**: Waits for the first accurate GPS reading from Core Location's live updates
 3. **Error Handling**: Reports any failure as a ``GPSLocationError`` with a user-facing message and a recovery
-4. **Reverse Geocodes**: Converts coordinates to a readable place name
-5. **Returns Result**: Provides both coordinates and human-readable name
+4. **Reverse Geocodes**: Tries to convert coordinates to a readable place name
+5. **Returns Result**: Provides the coordinates, and the place name when reverse geocoding found one
 
 The entire process is designed to be quick and battery-efficient, stopping location services once a result is obtained.
 
@@ -132,7 +132,7 @@ struct ContentView: View {
     var body: some View {
         VStack {
             if let location = location {
-                Text("Current Location: \(location.name)")
+                Text("Current Location: \(location.name ?? "Unknown")")
             } else {
                 Text("Tap to get location")
             }

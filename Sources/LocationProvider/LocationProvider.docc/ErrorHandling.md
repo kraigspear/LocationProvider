@@ -122,12 +122,12 @@ LocationProvider gracefully handles reverse geocoding failures without throwing 
 ```swift
 do {
     let location = try await LocationProvider().gpsLocation()
-    // location.name defaults to "GPS" if reverse geocoding failed
-    if location.name == "GPS" {
-        print("Location coordinates available but address lookup failed")
-        print("Coordinates: \(location.location.coordinate)")
+    // location.name is nil when reverse geocoding failed or found no name; the two look the same
+    if let name = location.name {
+        print("Location: \(name)")
     } else {
-        print("Location: \(location.name)")
+        print("Location coordinates available. No place name available.")
+        print("Coordinates: \(location.location.coordinate)")
     }
 } catch {
     // Handle location acquisition errors
@@ -135,7 +135,7 @@ do {
 }
 ```
 
-> **Note**: LocationProvider gracefully handles reverse geocoding failures by setting the location name to `"GPS"` rather than throwing an error. The location coordinates are still available, ensuring users always get their location even if address lookup fails.
+> **Note**: LocationProvider gracefully handles reverse geocoding failures by leaving the location's `name` `nil` rather than throwing an error. The location coordinates are still available, ensuring users always get their location even if address lookup fails.
 
 ## SwiftUI Error Handling
 

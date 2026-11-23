@@ -26,7 +26,7 @@ Add the following to your `Package.swift` file:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/kraigspear/LocationProvider.git", .upToNextMinor(from: "0.2.0"))
+    .package(url: "https://github.com/kraigspear/LocationProvider.git", .upToNextMinor(from: "0.3.0"))
 ]
 ```
 
@@ -39,7 +39,7 @@ let provider = LocationProvider()
 
 do {
     let location = try await provider.gpsLocation()
-    print("Current location: \(location.name)")
+    print("Current location: \(location.name ?? "unnamed")")
     print("Coordinates: \(location.location.coordinate)")
 } catch {
     print("Failed to get location: \(error)")
@@ -97,7 +97,7 @@ Show the error's `localizedDescription`, and let its `recovery` pick the action:
 ```swift
 do {
     let location = try await provider.gpsLocation()
-    print("Location: \(location.name) at \(location.location.coordinate)")
+    print("Location: \(location.name ?? "unnamed") at \(location.location.coordinate)")
 } catch {
     switch error.recovery {
     case .retry: showRetryAlert(message: error.localizedDescription)
@@ -195,7 +195,7 @@ struct LocationView: View {
     var body: some View {
         VStack {
             if let location = location {
-                Text("Current Location: \(location.name)")
+                Text("Current Location: \(location.name ?? "Unknown")")
                 Text("Coordinates: \(location.location.coordinate)")
             } else if isLoading {
                 ProgressView("Finding location...")
@@ -234,7 +234,7 @@ struct LocationView: View {
 ## Key Components
 
 - `LocationProvider`: Fetches the current location; `Configuration` tunes its timing
-- `GPSLocation`: A location with its reverse-geocoded name
+- `GPSLocation`: A location with its reverse-geocoded name, when there is one
 - `GPSLocationError`: Why no location arrived, with a message and a `recovery`
 - `openLocationSettings()`: Opens the settings screen where users grant location access
 
@@ -261,7 +261,7 @@ import SwiftData
 
 @Model
 class SavedLocation {
-    var name: String
+    var name: String?
     var latitude: Double
     var longitude: Double
     var timestamp: Date
@@ -313,7 +313,7 @@ let location = try await locationProvider.gpsLocation()
 **Reverse geocoding failures:**
 - Network connectivity required for address lookup
 - Some remote locations may not have address data
-- Framework gracefully falls back to "GPS" name
+- The location still arrives, with `name` set to `nil`
 
 **Testing on Simulator:**
 - Use simulator's location simulation features
